@@ -13,7 +13,9 @@ PACKAGE = 'swift-usda'
 # The scaffold runs these jobs; every other job keeps its final shape behind `if: ${{ false }}`.
 ACTIVE_JOBS = ('lint', 'scaffold')
 REQUIRED = (
-    '.github/workflows/ci.yml', '.github/workflows/docs.yml', '.gitignore', '.swift-format', 'Package.swift', 'Scripts/build-docs.sh', 'Scripts/linux-test.sh',
+    '.github/workflows/ci.yml', '.github/workflows/docs.yml', '.gitignore', '.swift-format',
+    'CHANGELOG.md', 'CONTRIBUTING.md', 'IMPLEMENTATION_READINESS.md', 'LICENSE',
+    'Package.swift', 'README.md', 'Scripts/build-docs.sh', 'Scripts/linux-test.sh',
     'Scripts/verify-scaffold.py', 'Scripts/verify-source.sh', 'Scripts/verify.sh',
 )
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -101,7 +103,7 @@ def replace(path, old, new):
 
 def self_test():
     mutations = (
-        ('required file', lambda p: (p / 'Scripts/linux-test.sh').unlink()),
+        ('required file', lambda p: (p / 'LICENSE').unlink()),
         ('manifest', lambda p: (p / 'Package.swift').write_text('// empty\n')),
         ('format policy', lambda p: (p / '.swift-format').write_text('{}\n')),
         ('source artifact', lambda p: (p / 'Sources').mkdir()),
