@@ -10,8 +10,10 @@ import sys
 import tempfile
 
 PACKAGE = 'swift-usda'
+# The scaffold runs these jobs; every other job keeps its final shape behind `if: ${{ false }}`.
+ACTIVE_JOBS = ('lint', 'scaffold')
 REQUIRED = (
-    '.gitignore', '.swift-format', 'Package.swift', 'Scripts/build-docs.sh', 'Scripts/linux-test.sh',
+    '.github/workflows/ci.yml', '.github/workflows/docs.yml', '.gitignore', '.swift-format', 'Package.swift', 'Scripts/build-docs.sh', 'Scripts/linux-test.sh',
     'Scripts/verify-scaffold.py', 'Scripts/verify-source.sh', 'Scripts/verify.sh',
 )
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -57,10 +59,13 @@ def check(root):
         for name, body in jobs:
             if not re.search(r'^    timeout-minutes: [1-9][0-9]*$', body, re.M):
                 errors.append('Unbounded job: ' + name)
-            if name != 'scaffold' and '    if: ${{ false }}' not in body:
+            if name in ACTIVE_JOBS and '    if: ${{ false }}' in body:
+                errors.append('Scaffold job is disabled: ' + name)
+            if name not in ACTIVE_JOBS and '    if: ${{ false }}' not in body:
                 errors.append('Implementation job is active: ' + name)
-        if workflow.name == 'ci.yml' and not any(name == 'scaffold' for name, _ in jobs):
-            errors.append('Missing active scaffold job')
+        for active in ACTIVE_JOBS:
+            if workflow.name == 'ci.yml' and not any(name == active for name, _ in jobs):
+                errors.append('Missing active job: ' + active)
     for shell in sorted((root / 'Scripts').glob('*.sh')):
         if subprocess.run(['bash', '-n', str(shell)], capture_output=True).returncode:
             errors.append('Invalid shell syntax: ' + shell.name)
@@ -101,6 +106,13 @@ def self_test():
         ('format policy', lambda p: (p / '.swift-format').write_text('{}\n')),
         ('source artifact', lambda p: (p / 'Sources').mkdir()),
         ('transport trait', lambda p: append(p / 'Package.swift', '// HTTPPortable\n')),
+        ('timeout', lambda p: replace(p / '.github/workflows/ci.yml', 'timeout-minutes:', 'unbounded:')),
+        ('active source lane', lambda p: replace(p / '.github/workflows/ci.yml', 'if: ${{ false }}', 'if: ${{ true }}')),
+        ('active docs lane', lambda p: replace(p / '.github/workflows/docs.yml', 'if: ${{ false }}', 'if: ${{ true }}')),
+        ('disabled lint lane', lambda p: replace(p / '.github/workflows/ci.yml', '    name: swift-format lint',
+                                                 '    if: ${{ false }}\n    name: swift-format lint')),
+        ('missing scaffold lane', lambda p: replace(p / '.github/workflows/ci.yml', '  scaffold:', '  disabled:')),
+        ('missing lint lane', lambda p: replace(p / '.github/workflows/ci.yml', '  lint:', '  formatting:')),
         ('shell syntax', lambda p: append(p / 'Scripts/verify.sh', '\nif\n')),
         ('local file tracking', lambda p: track_local(p)),
     )
