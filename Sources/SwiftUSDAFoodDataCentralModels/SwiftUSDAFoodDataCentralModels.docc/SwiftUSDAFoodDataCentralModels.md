@@ -59,6 +59,25 @@ let filtered = Endpoint<AbridgedFood>.abridgedFood(2_346_404, nutrients: macros)
 print(filtered.path)  // /food/2346404?format=abridged&nutrients=203,204,205
 ```
 
+### Several foods at once
+
+``FoodIDs`` holds one to 20 distinct food identifiers, the most FoodData Central accepts on one
+`/foods` request, and throws ``FoodDataCentralValidationError`` for an empty, oversized, or
+repeated list. The identifiers are sent in the order given; nothing is sorted, removed, or split
+across requests.
+
+```swift
+let ids = try FoodIDs([167_782, 2_768_188])
+let endpoint = Endpoint<[Food]>.foods(ids)
+print(endpoint.path)  // /foods?fdcIds=167782,2768188&format=full
+
+let request: FoodRequest<[AbridgedFood]> = .abridgedFoods(ids)
+```
+
+The FoodData Central specification says it omits an identifier it does not know, so the result can
+be shorter than the list, or empty. It returns the foods in an order it does not document, so match results to
+identifiers by each food's `fdcID` rather than by position.
+
 ### Your own response types
 
 Wrap any validated path in an endpoint with a response type you define, and wrap that endpoint in a
@@ -88,8 +107,9 @@ The api.data.gov gateway answers credential and rate-limit failures with a body 
 
 ### Identifiers and inputs
 
-- ``FoodID``
 - ``FoodDataType``
+- ``FoodID``
+- ``FoodIDs``
 - ``NutrientNumber``
 - ``NutrientNumbers``
 - ``FoodDataCentralValidationError``

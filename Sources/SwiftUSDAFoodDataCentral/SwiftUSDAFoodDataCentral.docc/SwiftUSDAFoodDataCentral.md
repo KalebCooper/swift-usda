@@ -29,6 +29,14 @@ case .survey(let food): print(food.description)
 }
 ```
 
+To fetch up to 20 foods in one request, validate the identifiers as `FoodIDs`. The FoodData Central
+specification says unknown identifiers are omitted, and the rest come back in an order it does not
+document:
+
+```swift
+let foods = try await client.abridgedFoods(try FoodIDs([167_782, 2_768_188]))
+```
+
 The client sends the key in the `X-Api-Key` header, never in the URL, and checks cancellation before
 every request. It does not retry, follow redirects, cache, or track the gateway's rate limit.
 Operations throw ``FoodDataCentralError``. Credential and rate-limit refusals from the api.data.gov

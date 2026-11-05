@@ -26,5 +26,11 @@ All notable changes are documented here, following
   header, and checks cancellation before every request.
 - `FoodDataCentralConfiguration` with a required API key, and the typed `FoodDataCentralError` with
   `gateway`, `invalidAPIKey`, and `transport` cases.
+- Multiple-food lookup for `GET /foods`: `FoodIDs` (one to 20 distinct identifiers),
+  `Endpoint.foods(_:nutrients:)` and `Endpoint.abridgedFoods(_:nutrients:)`,
+  `FoodRequest.foods(_:nutrients:)` and `FoodRequest.abridgedFoods(_:nutrients:)`, and the client
+  methods `foods(_:nutrients:)` and `abridgedFoods(_:nutrients:)`. The specification says unknown
+  identifiers are omitted; the service's result order is undocumented.
+- `FoodDataCentralValidationError.duplicateFoodID` and `.foodIDCount`.
 - An `HTTPPortable` trait for Linux and Android transports.
 - DocC documentation for both products.

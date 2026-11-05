@@ -9,11 +9,11 @@ import SwiftUSDAFoodDataCentralModels
 
 /// A Sendable client for the USDA FoodData Central API.
 ///
-/// Use ``food(_:nutrients:)`` or ``abridgedFood(_:nutrients:)`` for an everyday lookup,
-/// ``value(for:)`` for a reusable request, or ``send(_:)`` for a typed endpoint. Every entry point
-/// sends the API key in the `X-Api-Key` header, never in the URL, and reports the same typed
-/// errors. No retries or redirects are performed automatically, and the client does not track the
-/// gateway's rate limit.
+/// Use ``food(_:nutrients:)``, ``abridgedFood(_:nutrients:)``, ``foods(_:nutrients:)``, or
+/// ``abridgedFoods(_:nutrients:)`` for an everyday lookup, ``value(for:)`` for a reusable request,
+/// or ``send(_:)`` for a typed endpoint. Every entry point sends the API key in the `X-Api-Key`
+/// header, never in the URL, and reports the same typed errors. No retries or redirects are
+/// performed automatically, and the client does not track the gateway's rate limit.
 ///
 /// ```swift
 /// let client = FoodDataCentralClient(

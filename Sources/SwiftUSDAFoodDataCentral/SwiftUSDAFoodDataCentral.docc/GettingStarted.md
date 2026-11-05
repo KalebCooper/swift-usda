@@ -52,13 +52,32 @@ let macros = try NutrientNumbers([203, 204, 205])
 let food = try await client.abridgedFood(2_346_404, nutrients: macros)
 ```
 
+### Look up several foods
+
+To fetch up to 20 foods in one request, validate the identifiers as `FoodIDs` and call
+``FoodDataCentralClient/foods(_:nutrients:)`` or ``FoodDataCentralClient/abridgedFoods(_:nutrients:)``.
+They accept the same optional nutrient filter as a single lookup.
+
+```swift
+let ids = try FoodIDs([167_782, 2_768_188])
+let foods = try await client.foods(ids)
+let abridged = try await client.abridgedFoods(ids)
+```
+
+`FoodIDs` throws `FoodDataCentralValidationError.foodIDCount` for an empty list or one with more
+than 20 identifiers, and `FoodDataCentralValidationError.duplicateFoodID` for a repeat, before any
+request is sent. The FoodData Central specification says it omits an identifier it does not know, so
+the result can be shorter than the list or empty. It returns the foods in an order it does not
+document, so match results to identifiers by each food's `fdcID` instead of by position.
+
 ### Choose a level
 
 Each lookup is available at three equivalent levels, and all of them send the same request with the
 same authentication and errors:
 
-- The everyday methods, ``FoodDataCentralClient/food(_:nutrients:)`` and
-  ``FoodDataCentralClient/abridgedFood(_:nutrients:)``.
+- The everyday methods, ``FoodDataCentralClient/food(_:nutrients:)``,
+  ``FoodDataCentralClient/abridgedFood(_:nutrients:)``, ``FoodDataCentralClient/foods(_:nutrients:)``,
+  and ``FoodDataCentralClient/abridgedFoods(_:nutrients:)``.
 - A reusable `FoodRequest`, executed with ``FoodDataCentralClient/value(for:)``. A request is a
   value you can store, compare, and pass around before sending it.
 - A typed `Endpoint`, sent with ``FoodDataCentralClient/send(_:)``. An endpoint is the single HTTP
@@ -71,6 +90,9 @@ let fromRequest = try await client.value(for: request)
 let endpoint = Endpoint<Food>.food(2_346_404)
 let fromEndpoint = try await client.send(endpoint)
 ```
+
+The multiple-food lookups work the same way: `FoodRequest<[Food]>.foods(_:nutrients:)` and
+`Endpoint<[Food]>.foods(_:nutrients:)`, with `abridgedFoods` for `[AbridgedFood]`.
 
 ### Handle errors
 
