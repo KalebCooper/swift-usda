@@ -165,6 +165,12 @@ An unknown identifier arrives as `FoodDataCentralError.transport` with the `404`
 and rate-limit refusals arrive as `.gateway` with the gateway's code, such as `API_KEY_INVALID` or
 `OVER_RATE_LIMIT`.
 
+The [SwiftUI demo app](Examples/SwiftUSDAFoodDataCentralDemo) searches foods, loads more results a
+page at a time, and shows the full record for a food. It keeps your entered key in memory.
+Open [SwiftUSDAFoodDataCentralDemo.xcodeproj](Examples/SwiftUSDAFoodDataCentralDemo/SwiftUSDAFoodDataCentralDemo.xcodeproj)
+in Xcode with the standalone package window closed, since Xcode opens a local package in only one
+window at a time.
+
 ## Products
 
 | Product | Contents |

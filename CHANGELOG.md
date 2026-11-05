@@ -78,6 +78,8 @@ All notable changes are documented here, following
 - An `HTTPPortable` trait for Linux and Android transports.
 - DocC documentation for both products, including articles on paging food lists and searching
   foods.
+- A SwiftUI demo app, `Examples/SwiftUSDAFoodDataCentralDemo`, that searches foods, loads more
+  results a page at a time, and shows the full record for a food.
 
 ### Changed
 
