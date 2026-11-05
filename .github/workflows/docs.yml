@@ -18,9 +18,9 @@ concurrency:
 
 jobs:
   build:
-    # No documentation products or catalogs exist yet.
-    if: ${{ false }}
     name: Build DocC site
+    # The documentation build needs Xcode 27's docc and the iOS 27.0 simulator SDK, the same pins as the
+    # Apple lane in ci.yml.
     runs-on: xcode-27
     # Provisional until this package has green runs on main.
     timeout-minutes: 15
@@ -55,8 +55,9 @@ jobs:
     name: Deploy to GitHub Pages
     needs: build
     runs-on: ubuntu-latest
-    # Publishing remains disabled until real products and catalogs pass local DocC gates.
-    if: ${{ false }}
+    # Only main publishes. A pull request or a workflow_dispatch on another ref builds and stops, so an
+    # experiment cannot overwrite the live site.
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
     # Provisional until this package has green runs on main.
     timeout-minutes: 15
     environment:
