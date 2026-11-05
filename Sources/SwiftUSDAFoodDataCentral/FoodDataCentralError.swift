@@ -17,6 +17,7 @@ import SwiftUSDAFoodDataCentralModels
 ///   switch error {
 ///   case .gateway(let response, _): print(response.error.code)
 ///   case .invalidAPIKey: print("The key cannot be sent.")
+///   case .pagination(let failure): print(failure)
 ///   case .transport(let failure): print(failure)
 ///   }
 /// }
@@ -35,6 +36,15 @@ public enum FoodDataCentralError: Error {
   /// The rejected credential is deliberately not attached to the error.
   case invalidAPIKey
 
+  /// A food list page sequence cannot safely continue.
+  ///
+  /// Only ``FoodListPageSequence`` and ``FoodListItemSequence`` report this case, before yielding
+  /// the page that caused it. It carries `FoodListPaginationError.resultWindowExceeded` when the
+  /// service refuses a page past its result window, or the error `FoodListQuery.next(after:)`
+  /// throws for a page it cannot continue from. A single page fetched with the client's
+  /// `value(for:)` or `send(_:)` reports a refused page as ``transport(_:)`` instead.
+  case pagination(FoodListPaginationError)
+
   /// A connection, cancellation, decoding, or HTTP status failure without a gateway error body.
   ///
   /// An unknown food identifier (`404`) and a rejected request (`400`) arrive here as
@@ -51,4 +61,16 @@ public enum FoodDataCentralError: Error {
       self = .transport(failure)
     }
   }
+
+  // Maps a page sequence's failure. The service answers a page past its result window with `400`
+  // and exactly this plain-text body; any other `400` stays a transport failure.
+  static func paging(_ failure: TransportError) -> Self {
+    if case .httpStatus(let body, 400, _) = failure, body == resultWindowBody {
+      return .pagination(.resultWindowExceeded)
+    }
+    return Self(failure)
+  }
+
+  private static let resultWindowBody = Data(
+    "Bad Request: pageSize * pageNumber exceeded upper search results limit.".utf8)
 }

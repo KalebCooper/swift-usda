@@ -42,6 +42,10 @@ package enum Fixture: String, CaseIterable, Sendable {
   /// portions, attributes, and input foods.
   case foodSurveyFull = "food-survey-full"
 
+  /// `GET /fdc/v1/foods/list?dataType=Foundation&pageNumber=1000&pageSize=200`, the service's
+  /// `400` plain-text body for a page past its result window, sent with a JSON content type.
+  case listBeyondEnd = "list-beyond-end"
+
   /// `GET /fdc/v1/foods/list?dataType=Branded&pageSize=2`, two abridged Branded foods.
   case listBranded = "list-branded"
 
@@ -51,6 +55,30 @@ package enum Fixture: String, CaseIterable, Sendable {
 
   /// `GET /fdc/v1/foods/list?dataType=Foundation&pageSize=2`, two abridged Foundation foods.
   case listFoundation = "list-foundation"
+
+  /// `GET /fdc/v1/foods/list?dataType=Foundation&pageNumber=0&pageSize=2`, byte for byte the
+  /// same body as page 1.
+  case listFoundationPage0 = "list-foundation-page-0"
+
+  /// `GET /fdc/v1/foods/list?dataType=Foundation&pageNumber=1&pageSize=2`, the first two abridged
+  /// Foundation foods, "Alaska Pollock, raw" and "Almond butter, creamy".
+  case listFoundationPage1 = "list-foundation-page-1"
+
+  /// `GET /fdc/v1/foods/list?dataType=Foundation&pageNumber=2&pageSize=2`, the next two abridged
+  /// Foundation foods, 2257045 and 1999631.
+  case listFoundationPage2 = "list-foundation-page-2"
+
+  /// `GET /fdc/v1/foods/list?dataType=Foundation,SR%20Legacy&pageSize=2`, two abridged SR Legacy
+  /// foods listed under the service's default order for the comma-separated filter.
+  case listFoundationSRLegacy = "list-foundation-sr-legacy"
+
+  /// `GET /fdc/v1/foods/list?dataType=Foundation&pageSize=2&sortBy=description`, the service's
+  /// `400` JSON body rejecting the announced `description` sort name.
+  case listSortDescription = "list-sort-description"
+
+  /// `GET /fdc/v1/foods/list?dataType=Foundation&pageSize=2&sortBy=fdcId&sortOrder=desc`, the two
+  /// Foundation foods with the highest identifiers, 2779268 then 2779267.
+  case listSortFDCIDDescending = "list-sort-fdc-id-desc"
 
   /// `GET /fdc/v1/foods/list?dataType=SR%20Legacy&pageSize=2`, two abridged SR Legacy foods.
   case listSRLegacy = "list-sr-legacy"

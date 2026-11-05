@@ -19,4 +19,9 @@ public enum FoodDataCentralValidationError: Error, Hashable, Sendable {
   /// A nutrient list was empty or longer than ``NutrientNumbers/maximumCount``; the associated
   /// value is the count given.
   case nutrientNumberCount(Int)
+  /// A page number was less than 1, the first page; the associated value is the number given.
+  case pageNumber(Int)
+  /// A page size was outside 1 to ``FoodListQuery/maximumPageSize``; the associated value is the
+  /// size given.
+  case pageSize(Int)
 }

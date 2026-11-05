@@ -12,19 +12,35 @@ filter of up to 25 nutrients. Full-format records decode in the shape of their d
 Branded, Foundation, SR Legacy, and Survey (FNDDS). Records of any other data type, such as
 Experimental, are kept whole as JSON.
 
+Food lists (`/foods/list`) work too: abridged foods filtered by data type and optionally sorted,
+read lazily as pages or as single foods, one request per page. Each of the five data types
+(Branded, Experimental, Foundation, SR Legacy, and Survey) was recorded from the live API.
+
 Each modeled shape is checked against a response recorded from the live API: one full record of
 each of the four data types, and abridged Foundation and Branded records. Fields documented in the
 FoodData Central specification but absent from those responses are optional and unverified. A field
 the models do not declare is not kept when a record decodes; only records of an unmodeled data type,
 and a Survey input food's nested record, are kept whole.
 
-Not yet built: food lists (`/foods/list`) and food search (`/foods/search`).
+Not yet built: food search (`/foods/search`).
 
 What FoodData Central does not guarantee:
 
 - **Multiple-food results.** The FoodData Central specification says `/foods` omits identifiers it
   does not know, so a result can be shorter than the request or empty. It returns foods in an order
   it does not document, so match results to identifiers by each food's `fdcID`.
+- **Where a list ends.** `/foods/list` sends a bare array with no total or last-page flag. The
+  sequences treat the first page with fewer foods than the page size as the last, which is the
+  SDK's reading, not a service guarantee; a list whose length is a multiple of the page size costs
+  one extra request that returns an empty page.
+- **A list is not a snapshot.** Each page is a separate request. If FoodData Central changes between
+  them, a food can repeat or be skipped, and the service documents no default order.
+- **How deep a list can page.** FoodData Central refuses pages deep in a list with a `400` and an
+  undocumented limit; it was observed at a page number times page size of 200,000. The sequences
+  report it as `FoodDataCentralError.pagination(.resultWindowExceeded)`, recognized by the
+  service's exact response text. Fetching a single page reports it as `.transport`.
+- **Sort names.** `fdcId` is the only sort name confirmed by a recorded response. The specification
+  warns that `dataType.keyword` and `lowercaseDescription.keyword` will change.
 - **Freshness.** FoodData Central publishes no update schedule, so the API guarantees no data
   freshness.
 - **Rate limits.** The api.data.gov gateway allows 1,000 requests per hour. Exceeding it
@@ -61,6 +77,25 @@ let foods = try await client.abridgedFoods(try FoodIDs([167_782, 2_768_188]))
 
 An empty list, more than 20 identifiers, or a repeat throws `FoodDataCentralValidationError` before
 any request is sent.
+
+To list foods, validate a `FoodListQuery` and read it lazily. Nothing is sent until you read, and
+each read fetches one page of up to `pageSize` foods (1 to 200, default 50), numbered from page 1:
+
+```swift
+let query = try FoodListQuery(
+  dataTypes: [.foundation], pageSize: 2, sort: FoodSort(field: .fdcID, order: .descending))
+
+for try await page in client.foodListPages(query) {
+  print(page.pageNumber, page.foods.map(\.fdcID))
+}
+
+for try await food in client.foods(listing: query) {
+  print(food.description)
+}
+```
+
+A page number below 1 or a page size outside 1 to 200 throws `FoodDataCentralValidationError` before
+any request is sent. To fetch just one page, call `client.value(for: .foodList(query))`.
 
 Each lookup is also available as a reusable `FoodRequest`, sent with `value(for:)`, and as a typed
 `Endpoint`, sent with `send(_:)` or with a networking stack of your own. Operations throw

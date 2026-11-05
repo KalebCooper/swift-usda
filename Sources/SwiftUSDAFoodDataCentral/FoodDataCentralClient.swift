@@ -10,10 +10,12 @@ import SwiftUSDAFoodDataCentralModels
 /// A Sendable client for the USDA FoodData Central API.
 ///
 /// Use ``food(_:nutrients:)``, ``abridgedFood(_:nutrients:)``, ``foods(_:nutrients:)``, or
-/// ``abridgedFoods(_:nutrients:)`` for an everyday lookup, ``value(for:)`` for a reusable request,
-/// or ``send(_:)`` for a typed endpoint. Every entry point sends the API key in the `X-Api-Key`
-/// header, never in the URL, and reports the same typed errors. No retries or redirects are
-/// performed automatically, and the client does not track the gateway's rate limit.
+/// ``abridgedFoods(_:nutrients:)`` for an everyday lookup, `value(for:)` for a reusable request,
+/// or ``send(_:)`` for a typed endpoint. List foods lazily with ``foodListPages(_:)`` and
+/// ``foods(listing:)``, or with ``pages(for:)`` and ``items(for:)`` for a list request. Every
+/// entry point sends the API key in the `X-Api-Key` header, never in the URL, and reports the same
+/// typed errors. No retries or redirects are performed automatically, and the client does not
+/// track the gateway's rate limit.
 ///
 /// ```swift
 /// let client = FoodDataCentralClient(
@@ -37,7 +39,7 @@ public struct FoodDataCentralClient: Sendable {
 
   /// Looks up one food in the abridged format.
   ///
-  /// Sends `FoodRequest.abridgedFood(_:nutrients:)` through ``value(for:)``.
+  /// Sends `FoodRequest.abridgedFood(_:nutrients:)` through `value(for:)`.
   /// - Parameters:
   ///   - id: The food's FoodData Central identifier.
   ///   - nutrients: The nutrients to return, or `nil` for all of them.
@@ -53,7 +55,7 @@ public struct FoodDataCentralClient: Sendable {
 
   /// Looks up one food in the full format, in the shape its data type defines.
   ///
-  /// Sends `FoodRequest.food(_:nutrients:)` through ``value(for:)``.
+  /// Sends `FoodRequest.food(_:nutrients:)` through `value(for:)`.
   /// - Parameters:
   ///   - id: The food's FoodData Central identifier.
   ///   - nutrients: The nutrients to return, or `nil` for all of them.
@@ -96,6 +98,11 @@ public struct FoodDataCentralClient: Sendable {
     switch request.resolution {
     case .endpoint(let endpoint):
       return try await send(endpoint)
+    case .foodList(let query):
+      guard let page = try await foodListPage(query) as? Value else {
+        preconditionFailure("Only FoodRequest<FoodListPage> can hold a food list resolution.")
+      }
+      return page
     }
   }
 

@@ -70,6 +70,25 @@ request is sent. The FoodData Central specification says it omits an identifier 
 the result can be shorter than the list or empty. It returns the foods in an order it does not
 document, so match results to identifiers by each food's `fdcID` instead of by position.
 
+### List foods
+
+To list foods by data type, validate a `FoodListQuery` and read it with
+``FoodDataCentralClient/foodListPages(_:)`` for pages or ``FoodDataCentralClient/foods(listing:)``
+for foods one at a time. Both are lazy: nothing is sent until you read, and each read fetches one
+page.
+
+```swift
+let query = try FoodListQuery(
+  dataTypes: [.foundation], pageSize: 2, sort: FoodSort(field: .fdcID, order: .descending))
+for try await food in client.foods(listing: query) {
+  print(food.description)
+}
+```
+
+`FoodListQuery` throws `FoodDataCentralValidationError.pageNumber` for a page number below 1 and
+`FoodDataCentralValidationError.pageSize` for a page size outside 1 to 200, before any request is
+sent. <doc:PagingFoodLists> explains where a list ends and what the SDK does not guarantee.
+
 ### Choose a level
 
 Each lookup is available at three equivalent levels, and all of them send the same request with the
@@ -78,7 +97,7 @@ same authentication and errors:
 - The everyday methods, ``FoodDataCentralClient/food(_:nutrients:)``,
   ``FoodDataCentralClient/abridgedFood(_:nutrients:)``, ``FoodDataCentralClient/foods(_:nutrients:)``,
   and ``FoodDataCentralClient/abridgedFoods(_:nutrients:)``.
-- A reusable `FoodRequest`, executed with ``FoodDataCentralClient/value(for:)``. A request is a
+- A reusable `FoodRequest`, executed with `value(for:)`. A request is a
   value you can store, compare, and pass around before sending it.
 - A typed `Endpoint`, sent with ``FoodDataCentralClient/send(_:)``. An endpoint is the single HTTP
   request, and you can also execute it with a networking stack of your own.

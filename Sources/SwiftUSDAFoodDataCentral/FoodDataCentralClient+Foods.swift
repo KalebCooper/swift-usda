@@ -3,7 +3,7 @@ import SwiftUSDAFoodDataCentralModels
 extension FoodDataCentralClient {
   /// Looks up several foods in the abridged format.
   ///
-  /// Sends `FoodRequest.abridgedFoods(_:nutrients:)` through ``value(for:)``. The FoodData
+  /// Sends `FoodRequest.abridgedFoods(_:nutrients:)` through `value(for:)`. The FoodData
   /// Central specification says the service omits identifiers it does not know, so the result can
   /// be shorter than `ids` or empty. The result is in the order the service returns it, which it
   /// does not document.
@@ -22,7 +22,7 @@ extension FoodDataCentralClient {
 
   /// Looks up several foods in the full format, each in the shape its data type defines.
   ///
-  /// Sends `FoodRequest.foods(_:nutrients:)` through ``value(for:)``. The FoodData Central
+  /// Sends `FoodRequest.foods(_:nutrients:)` through `value(for:)`. The FoodData Central
   /// specification says the service omits identifiers it does not know, so the result can be
   /// shorter than `ids` or empty. The result is in the order the service returns it, which it
   /// does not document.

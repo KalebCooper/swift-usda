@@ -78,6 +78,31 @@ The FoodData Central specification says it omits an identifier it does not know,
 be shorter than the list, or empty. It returns the foods in an order it does not document, so match results to
 identifiers by each food's `fdcID` rather than by position.
 
+### Food lists
+
+``FoodListQuery`` describes one page of `GET /foods/list`: the data types to list, a one-based page
+number, a page size of 1 to 200, and an optional ``FoodSort``. It throws
+``FoodDataCentralValidationError`` for a page number below 1 or a page size outside 1 to 200.
+``Endpoint/foodList(_:)`` renders the query as the bare array of ``AbridgedFood`` values the service
+sends, and ``FoodRequest/foodList(_:)`` describes the same operation as a ``FoodListPage``, the foods
+paired with the page number and size that were requested.
+
+```swift
+let query = try FoodListQuery(
+  dataTypes: [.foundation], pageSize: 2, sort: FoodSort(field: .fdcID, order: .descending))
+print(Endpoint.foodList(query).path)
+// /foods/list?dataType=Foundation&pageNumber=1&pageSize=2&sortBy=fdcId&sortOrder=desc
+```
+
+FoodData Central sends no total or last-page flag, so ``FoodListQuery/next(after:)`` decides what
+follows a page: nothing after a page shorter than the page size, and otherwise the same query at the
+next page number. That is the SDK's reading, not a guarantee from the service, and a list whose
+length is an exact multiple of the page size ends with one empty page. A page that does not answer
+its query throws ``FoodListPaginationError``. ``FoodSortField`` is open: only `fdcId` is confirmed by
+a recorded response, and the specification warns that its two `.keyword` names will change. The
+service also refuses pages deeper than an undocumented window; see
+``FoodListPaginationError/resultWindowExceeded``.
+
 ### Your own response types
 
 Wrap any validated path in an endpoint with a response type you define, and wrap that endpoint in a
@@ -104,6 +129,17 @@ The api.data.gov gateway answers credential and rate-limit failures with a body 
 
 - ``FoodRequest``
 - ``Endpoint``
+
+### Food lists
+
+- ``FoodListQuery``
+- ``FoodListPage``
+- ``FoodListPaginationError``
+- ``FoodSort``
+- ``FoodSortField``
+- ``FoodSortOrder``
+- ``Endpoint/foodList(_:)``
+- ``FoodRequest/foodList(_:)``
 
 ### Identifiers and inputs
 

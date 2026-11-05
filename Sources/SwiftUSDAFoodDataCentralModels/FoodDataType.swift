@@ -2,7 +2,7 @@
 ///
 /// The type is open: FoodData Central publishes data types its specification does not list, such
 /// as Experimental, so any string decodes and is kept exactly. The constants name the values the
-/// specification documents.
+/// specification documents, plus ``experimental``, which the service accepts as a filter.
 ///
 /// ```swift
 /// let type = FoodDataType(rawValue: "Survey (FNDDS)")
@@ -11,6 +11,11 @@
 public struct FoodDataType: Codable, Hashable, RawRepresentable, Sendable {
   /// Branded foods, `Branded`.
   public static let branded = FoodDataType(rawValue: "Branded")
+  /// Experimental foods, `Experimental`.
+  ///
+  /// The FoodData Central specification does not list this data type, but the service returns
+  /// and filters by it.
+  public static let experimental = FoodDataType(rawValue: "Experimental")
   /// Foundation foods, `Foundation`.
   public static let foundation = FoodDataType(rawValue: "Foundation")
   /// Standard Reference legacy foods, `SR Legacy`.

@@ -37,6 +37,18 @@ document:
 let foods = try await client.abridgedFoods(try FoodIDs([167_782, 2_768_188]))
 ```
 
+To list foods, validate a `FoodListQuery` and read it page by page or food by food. Each read
+fetches one page, and the sequence ends at the first page shorter than the page size, which is the
+SDK's reading of the response rather than a guarantee from FoodData Central. See
+<doc:PagingFoodLists>.
+
+```swift
+let query = try FoodListQuery(dataTypes: [.foundation], pageSize: 2)
+for try await page in client.foodListPages(query) {
+  print(page.pageNumber, page.foods.map(\.fdcID))
+}
+```
+
 The client sends the key in the `X-Api-Key` header, never in the URL, and checks cancellation before
 every request. It does not retry, follow redirects, cache, or track the gateway's rate limit.
 Operations throw ``FoodDataCentralError``. Credential and rate-limit refusals from the api.data.gov
@@ -54,3 +66,13 @@ in the public domain under CC0 1.0, and FoodData Central asks to be credited as 
 - ``FoodDataCentralClient``
 - ``FoodDataCentralConfiguration``
 - ``FoodDataCentralError``
+
+### Listing foods
+
+- <doc:PagingFoodLists>
+- ``FoodDataCentralClient/foodListPages(_:)``
+- ``FoodDataCentralClient/foods(listing:)``
+- ``FoodDataCentralClient/pages(for:)``
+- ``FoodDataCentralClient/items(for:)``
+- ``FoodListPageSequence``
+- ``FoodListItemSequence``

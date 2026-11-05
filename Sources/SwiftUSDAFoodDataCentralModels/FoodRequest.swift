@@ -16,15 +16,28 @@ public struct FoodRequest<Response>: Hashable, Sendable {
   public enum Resolution: Hashable, Sendable {
     /// Send one endpoint and decode its response.
     case endpoint(Endpoint<Response>)
+    /// Send ``Endpoint/foodList(_:)`` for the query and wrap the returned foods in a
+    /// ``FoodListPage``; ``FoodListQuery/next(after:)`` describes each following page.
+    ///
+    /// Only ``FoodRequest/foodList(_:)`` creates this resolution, so it appears only when
+    /// `Response` is ``FoodListPage``.
+    case foodList(FoodListQuery)
   }
 
   /// How this request is carried out.
   public let resolution: Resolution
 
   /// Creates a request that sends one endpoint.
+  ///
+  /// A real `/foods/list` response is a bare array, which cannot decode as ``FoodListPage``; list
+  /// foods with `Endpoint<[AbridgedFood]>` or ``FoodRequest/foodList(_:)`` instead.
   /// - Parameter endpoint: The endpoint to send.
   public init(endpoint: Endpoint<Response>) {
     self.resolution = .endpoint(endpoint)
+  }
+
+  init(resolution: Resolution) {
+    self.resolution = resolution
   }
 }
 
