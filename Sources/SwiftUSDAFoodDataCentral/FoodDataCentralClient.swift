@@ -14,9 +14,9 @@ import SwiftUSDAFoodDataCentralModels
 /// or ``send(_:)`` for a typed endpoint. List foods lazily with ``foodListPages(_:)`` and
 /// ``foods(listing:)``, and search them lazily with ``foodSearchPages(_:)`` and
 /// ``foods(matching:)``. For a list or search request, `pages(for:)` and `items(for:)` return the
-/// matching page and food sequences. Every entry point sends the API key in the `X-Api-Key` header, never in the URL, and reports the same
-/// typed errors. No retries or redirects are performed automatically, and the client does not
-/// track the gateway's rate limit.
+/// matching page and food sequences. Every entry point sends the API key in the `X-Api-Key`
+/// header, never in the URL, and reports the same typed errors. No retries or redirects are
+/// performed automatically, and the client does not track the gateway's rate limit.
 ///
 /// ```swift
 /// let client = FoodDataCentralClient(
@@ -46,8 +46,9 @@ public struct FoodDataCentralClient: Sendable {
   ///   - nutrients: The nutrients to return, or `nil` for all of them.
   /// - Returns: The food in the abridged shape shared by every data type.
   /// - Throws: ``FoodDataCentralError/gateway(_:response:)`` for gateway errors, or
-  ///   ``FoodDataCentralError/transport(_:)`` for an unknown identifier (`404`), other HTTP,
-  ///   decoding, connection, and cancellation failures.
+  ///   ``FoodDataCentralError/transport(_:)`` for an unknown identifier (`404`, a status
+  ///   FoodData Central documents and whose body has not been recorded), other HTTP, decoding,
+  ///   connection, and cancellation failures.
   public func abridgedFood(
     _ id: FoodID, nutrients: NutrientNumbers? = nil
   ) async throws(FoodDataCentralError) -> AbridgedFood {
@@ -62,8 +63,9 @@ public struct FoodDataCentralClient: Sendable {
   ///   - nutrients: The nutrients to return, or `nil` for all of them.
   /// - Returns: The food, as the case of `Food` its data type selects.
   /// - Throws: ``FoodDataCentralError/gateway(_:response:)`` for gateway errors, or
-  ///   ``FoodDataCentralError/transport(_:)`` for an unknown identifier (`404`), other HTTP,
-  ///   decoding, connection, and cancellation failures.
+  ///   ``FoodDataCentralError/transport(_:)`` for an unknown identifier (`404`, a status
+  ///   FoodData Central documents and whose body has not been recorded), other HTTP, decoding,
+  ///   connection, and cancellation failures.
   public func food(
     _ id: FoodID, nutrients: NutrientNumbers? = nil
   ) async throws(FoodDataCentralError) -> Food {

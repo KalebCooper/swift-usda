@@ -63,8 +63,9 @@ for try await food in client.foods(matching: search) {
 The client sends the key in the `X-Api-Key` header, never in the URL, and checks cancellation before
 every request. It does not retry, follow redirects, cache, or track the gateway's rate limit.
 Operations throw ``FoodDataCentralError``. Credential and rate-limit refusals from the api.data.gov
-gateway arrive as ``FoodDataCentralError/gateway(_:response:)``; an unknown food identifier (`404`)
-arrives as ``FoodDataCentralError/transport(_:)`` with the original body.
+gateway arrive as ``FoodDataCentralError/gateway(_:response:)``; an unknown food identifier (`404`,
+documented by FoodData Central, body not recorded) arrives as ``FoodDataCentralError/transport(_:)``
+with the original body.
 
 FoodData Central publishes no update schedule, so the API guarantees no data freshness. Its data is
 in the public domain under CC0 1.0, and FoodData Central asks to be credited as the source.

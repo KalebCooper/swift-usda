@@ -1,10 +1,12 @@
 extension Endpoint where Response == [Food] {
   /// Several foods in the full format, `GET /foods?fdcIds=...&format=full`.
   ///
-  /// Each food arrives in the shape its data type defines. The FoodData Central
-  /// specification says the service omits identifiers it does not know, so the array can be
-  /// shorter than `ids`, and empty when none are known. The array is in the order the service returns it; FoodData Central does not document
-  /// that order. With `nutrients`, only those nutrients are returned for each food.
+  /// Each food arrives in the shape its data type defines. The FoodData Central specification
+  /// says the service omits identifiers it does not know, so the array can be shorter than `ids`,
+  /// and empty when none are known. The array is in the order the service returns it; FoodData
+  /// Central does not document that order. Per the specification, `nutrients` restricts the
+  /// nutrients returned for each food. No `/foods` response has been recorded, so this endpoint
+  /// and the `nutrients` filter follow the specification and are unverified.
   ///
   /// ```swift
   /// Endpoint.foods(try FoodIDs([167_782, 2_768_188])).path
@@ -25,7 +27,7 @@ extension Endpoint where Response == [AbridgedFood] {
   ///
   /// The abridged format has one shape for every data type. Unknown identifiers are omitted and
   /// the order is the service's, as for ``Endpoint/foods(_:nutrients:)``, and nutrients are
-  /// filtered the same way.
+  /// filtered the same way. Like that endpoint, it follows the specification and is unrecorded.
   ///
   /// ```swift
   /// Endpoint.abridgedFoods(try FoodIDs([167_782, 2_768_188])).path

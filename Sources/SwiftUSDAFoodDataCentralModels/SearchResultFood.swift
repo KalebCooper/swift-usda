@@ -7,8 +7,8 @@
 /// `publicationDate` and `publishedDate`, which the service is understood to send. Decoding reads
 /// `publishedDate` first and `publicationDate` second; encoding always writes `publishedDate`, so
 /// a decoded food survives a round trip unchanged. Nutrients accept two spellings the same way;
-/// see ``SearchResultFoodNutrient``. Fields that apply to one data type, such as ``brandOwner`` for Branded foods, are `nil`
-/// for the others. Dates and codes are kept as the provider's strings.
+/// see ``SearchResultFoodNutrient``. Fields that apply to one data type, such as ``brandOwner`` for
+/// Branded foods, are `nil` for the others. Dates and codes are kept as the provider's strings.
 ///
 /// ```swift
 /// for food in page.foods {

@@ -68,7 +68,8 @@ public struct Endpoint<Response>: Hashable, Sendable {
   ///
   /// Returns `nil` for an absolute or authority path, an empty resource path such as `/`, a
   /// fragment, raw whitespace or other bytes outside printable ASCII, a backslash, a dot segment in
-  /// any spelling, or an `api_key` query parameter in any letter case or encoding. Accepted text is retained exactly, without normalization.
+  /// any spelling, or an `api_key` query parameter in any letter case or encoding. Accepted text
+  /// is retained exactly, without normalization.
   ///
   /// ```swift
   /// let endpoint = Endpoint<Food>(path: "/food/2346404?format=full")

@@ -26,7 +26,7 @@ public struct FoodSortField: Hashable, RawRepresentable, Sendable {
 
   /// Creates a sort field from its wire spelling.
   ///
-  /// The value is sent as given; the service rejects a name it does not know with `400`.
+  /// The value is sent as given. The service rejected `description` with `400` when recorded.
   /// - Parameter rawValue: The `sortBy` value, such as `fdcId`.
   public init(rawValue: String) {
     self.rawValue = rawValue

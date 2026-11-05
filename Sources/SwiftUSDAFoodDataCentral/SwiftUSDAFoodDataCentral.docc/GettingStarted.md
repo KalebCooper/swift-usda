@@ -27,7 +27,8 @@ gateway decides whether a key is valid and reports a rejected key as
 
 The gateway allows 1,000 requests per hour. Exceeding it returns `429` with `OVER_RATE_LIMIT` and
 blocks the key for an hour; the client does not retry or wait. For exploration, data.gov's shared
-`DEMO_KEY` allows 30 requests per hour and 50 per day for each IP address.
+`DEMO_KEY` is documented at 30 requests per hour and 50 per day for each IP address, but responses
+were observed with `X-RateLimit-Limit: 10`.
 
 On Linux and Android, enable the package's `HTTPPortable` trait and pass a swifty-networking
 transport, such as `AsyncHTTPClientTransport`, to
@@ -44,8 +45,10 @@ let full = try await client.food(2_346_404)
 let abridged = try await client.abridgedFood(2_346_404)
 ```
 
-To return only some nutrients, pass up to 25 nutrient numbers. They are sent in the order given; a
-food with none of them comes back with an empty nutrient list rather than an error.
+To return only some nutrients, pass nutrient numbers. They are sent in the order given. The
+FoodData Central specification limits the filter to 25 numbers and describes them as legacy
+Standard Reference numbers; no response with a `nutrients` filter has been recorded, so the limit,
+which numbers the service matches, and what it returns for a food with none of them are unverified.
 
 ```swift
 let macros = try NutrientNumbers([203, 204, 205])
@@ -56,7 +59,8 @@ let food = try await client.abridgedFood(2_346_404, nutrients: macros)
 
 To fetch up to 20 foods in one request, validate the identifiers as `FoodIDs` and call
 ``FoodDataCentralClient/foods(_:nutrients:)`` or ``FoodDataCentralClient/abridgedFoods(_:nutrients:)``.
-They accept the same optional nutrient filter as a single lookup.
+They accept the same optional nutrient filter as a single lookup. No `/foods` response has been
+recorded, so this lookup and its filter follow the specification and are unverified.
 
 ```swift
 let ids = try FoodIDs([167_782, 2_768_188])
@@ -140,7 +144,8 @@ Every operation throws ``FoodDataCentralError``:
   as `API_KEY_MISSING`, `API_KEY_INVALID`, and `OVER_RATE_LIMIT`, and the original HTTP response.
 - ``FoodDataCentralError/transport(_:)`` covers everything else: connection, cancellation, and
   decoding failures, and HTTP statuses without a gateway body, such as `404` for an unknown food
-  identifier.
+  identifier. FoodData Central documents `404` and `400` on a food lookup, but those bodies have
+  not been recorded.
 - ``FoodDataCentralError/invalidAPIKey`` comes only from creating a configuration.
 
 ```swift

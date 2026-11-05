@@ -5,7 +5,8 @@
 /// verified against a recorded response. The specification marks no field as required; this type
 /// requires the page number, both totals, and the foods, because continuing a search depends on
 /// them. The echoed ``foodSearchCriteria`` is decoded leniently: an echo of another shape becomes
-/// `nil` rather than failing the page, because continuation never reads it. Pass a page to ``FoodSearchQuery/next(after:)`` to describe the following page.
+/// `nil` rather than failing the page, because continuation never reads it. Pass a page to
+/// ``FoodSearchQuery/next(after:)`` to describe the following page.
 ///
 /// ```swift
 /// let page = try JSONDecoder().decode(FoodSearchResult.self, from: body)

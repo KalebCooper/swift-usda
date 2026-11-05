@@ -9,24 +9,35 @@ Food records and nutrients from USDA FoodData Central, with Swift types and `asy
 Four FoodData Central endpoints work today: food lookup by identifier (`/food/{fdcId}`), several
 foods at once (`/foods`, one to 20 identifiers per request), food lists (`/foods/list`), and food
 search (`/foods/search`). Lookups come in the full and abridged formats, with an optional
-filter of up to 25 nutrients. Full-format records decode in the shape of their data type:
-Branded, Foundation, SR Legacy, and Survey (FNDDS). Records of any other data type, such as
-Experimental, are kept whole as JSON.
+`nutrients` filter. Full-format records decode in the shape of their data type: Branded,
+Foundation, SR Legacy, and Survey (FNDDS). A record of any other data type is kept whole as JSON by
+design; only the abridged Experimental list has been recorded, so a full-format Experimental record
+is untested.
 
 Food lists (`/foods/list`) work too: abridged foods filtered by data type and optionally sorted,
 read lazily as pages or as single foods, one request per page. Each of the five data types
 (Branded, Experimental, Foundation, SR Legacy, and Survey) was recorded from the live API.
 
-Each modeled shape is checked against a response recorded from the live API: one full record of
-each of the four data types, and abridged Foundation and Branded records. Fields documented in the
-FoodData Central specification but absent from those responses are optional and unverified. A field
-the models do not declare is not kept when a record decodes; only records of an unmodeled data type,
-and a Survey input food's nested record, are kept whole.
-
 Food search (`/foods/search`) works as well: search terms with optional data type, brand owner,
 trade channel, and publication date filters and a sort, posted as a JSON body and read lazily as
-pages or as single foods, one request per page. No search response has been recorded, so the search
-result shapes come from the FoodData Central specification and are unverified.
+pages or as single foods, one request per page.
+
+Each modeled shape of the recorded endpoints, single-food lookup and the food list, is checked
+against a response recorded from the live API: one full record of each of the four data types, and
+abridged Foundation and Branded records. Not everything is recorded:
+
+- **Search is unrecorded.** No search response has been recorded, so the search result shapes come
+  from the FoodData Central specification and are unverified.
+- **`/foods` and the `nutrients` filter are unrecorded.** Multiple-food lookup and the `nutrients`
+  filter follow the specification and are unverified, like search. The 25-number limit, whether the
+  service matches legacy nutrient numbers or nutrient IDs, and what it returns for a food with none
+  of the requested nutrients are all unrecorded.
+- **Error bodies on `/food/{id}` are unrecorded.** FoodData Central documents `404` for an unknown
+  identifier and `400` for invalid input, but those response bodies have not been recorded.
+- **Unmodeled fields.** Fields documented in the specification but absent from the recorded
+  responses are optional and unverified. A field the models do not declare is not kept when a record
+  decodes; only records of an unmodeled data type, and a Survey input food's nested record, are kept
+  whole.
 
 What FoodData Central does not guarantee:
 
@@ -56,13 +67,14 @@ What FoodData Central does not guarantee:
   recorded for the food list and assumed for search.
 - **Sort names.** `fdcId` is the only sort name confirmed by a recorded response. The specification
   warns that `dataType.keyword` and `lowercaseDescription.keyword` will change, but the announced
-  replacement `description` is refused with a `400` today.
+  replacement `description` was refused with a `400` when recorded.
 - **Freshness.** FoodData Central publishes no update schedule, so the API guarantees no data
   freshness.
 - **Rate limits.** The api.data.gov gateway allows 1,000 requests per hour. Exceeding it
   returns `429` and blocks the key for an hour. The client does not retry, wait, or track the limit.
-- **The shared demo key.** data.gov's `DEMO_KEY` allows 30 requests per hour and 50 per day for each
-  IP address. It is for exploration, not for applications.
+- **The shared demo key.** data.gov's documentation says `DEMO_KEY` allows 30 requests per hour and
+  50 per day for each IP address, but responses were observed with `X-RateLimit-Limit: 10`. It is
+  for exploration, not for applications.
 
 Identifiers, units, dates, and missing values are kept as FoodData Central sends them. Nothing is
 converted, defaulted, or filtered, except that a field FoodData Central sends as an integer in some
@@ -137,7 +149,8 @@ Each lookup is also available as a reusable `FoodRequest`, sent with `value(for:
 
 ## Example
 
-Look up a food in the full format, limited to protein, fat, and carbohydrate:
+Look up a food in the full format, asking for protein, fat, and carbohydrate (the `nutrients`
+filter is unrecorded; see Status):
 
 ```swift
 import SwiftUSDAFoodDataCentral
@@ -161,8 +174,8 @@ do {
 }
 ```
 
-An unknown identifier arrives as `FoodDataCentralError.transport` with the `404` response. Credential
-and rate-limit refusals arrive as `.gateway` with the gateway's code, such as `API_KEY_INVALID` or
+An unknown identifier is documented by FoodData Central as a `404`, whose body has not been recorded;
+it arrives as `FoodDataCentralError.transport` with the response. Credential and rate-limit refusals arrive as `.gateway` with the gateway's code, such as `API_KEY_INVALID` or
 `OVER_RATE_LIMIT`.
 
 The [SwiftUI demo app](Examples/SwiftUSDAFoodDataCentralDemo) searches foods, loads more results a

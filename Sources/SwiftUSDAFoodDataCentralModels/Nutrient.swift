@@ -4,7 +4,8 @@
 /// ``shortestName`` arrive only on some nutrients, such as group headings like Proximates.
 ///
 /// ```swift
-/// print(nutrient.number, nutrient.name, nutrient.unitName)  // Optional("203") Optional("Protein") Optional("g")
+/// print(nutrient.number, nutrient.name, nutrient.unitName)
+/// // Optional("203") Optional("Protein") Optional("g")
 /// ```
 public struct Nutrient: Codable, Hashable, Sendable {
   /// The nutrient ID, such as 1003 for protein.

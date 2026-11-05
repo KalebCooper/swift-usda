@@ -12,6 +12,9 @@ All notable changes are documented here, following
   `FoodRequest` request type with its public `resolution`, and
   `Endpoint.food(_:nutrients:)` and `Endpoint.abridgedFood(_:nutrients:)` for
   `GET /food/{fdcId}` in the full and abridged formats.
+- `Endpoint.init?(path:)` and `Endpoint.init?(link:)`, which build an endpoint from a relative path
+  or a FoodData Central link and return `nil` for an `api_key` query parameter in any spelling, a
+  foreign origin, or a malformed path.
 - Full-format records as the `Food` enum, decoded by data type into `BrandedFood`,
   `FoundationFood`, `SRLegacyFood`, and `SurveyFood`, with any other data type kept whole as
   `.other(dataType:_:)`. Abridged records as `AbridgedFood`.
@@ -23,15 +26,20 @@ All notable changes are documented here, following
   whole.
 - `SwiftUSDAFoodDataCentral`, a product with `FoodDataCentralClient`, which offers `food(_:nutrients:)`,
   `abridgedFood(_:nutrients:)`, `value(for:)`, and `send(_:)`, sends the API key in the `X-Api-Key`
-  header, and checks cancellation before every request.
-- `FoodDataCentralConfiguration` with a required API key, and the typed `FoodDataCentralError` with
-  `gateway`, `invalidAPIKey`, and `transport` cases.
+  header, checks cancellation before every request, and never follows redirects. It is created with
+  `init(apiKey:)` or `init(configuration:session:)` on Apple platforms, or with the
+  `init(configuration:transport:)` transport initializer on any platform.
+- `FoodDataCentralConfiguration` with a required API key, whose `description` redacts the key, and
+  the typed `FoodDataCentralError` with `gateway`, `invalidAPIKey`, `pagination`, and `transport`
+  cases.
 - Multiple-food lookup for `GET /foods`: `FoodIDs` (one to 20 distinct identifiers),
   `Endpoint.foods(_:nutrients:)` and `Endpoint.abridgedFoods(_:nutrients:)`,
   `FoodRequest.foods(_:nutrients:)` and `FoodRequest.abridgedFoods(_:nutrients:)`, and the client
   methods `foods(_:nutrients:)` and `abridgedFoods(_:nutrients:)`. The specification says unknown
   identifiers are omitted; the service's result order is undocumented.
 - `FoodDataCentralValidationError.duplicateFoodID` and `.foodIDCount`.
+- `FoodRequest.Resolution` cases `foodList(FoodListQuery)` and `foodSearch(FoodSearchQuery)`, and a
+  `value(for:)` overload for `FoodRequest<FoodListPage>`.
 - Food lists for `GET /foods/list`: `FoodListQuery` (data types, a one-based page number, a page size
   of 1 to 200, and an optional `FoodSort`), `FoodSort`, `FoodSortField`, `FoodSortOrder`,
   `FoodListPage`, `Endpoint.foodList(_:)`, and `FoodRequest.foodList(_:)`. `FoodSortField` is open;
@@ -42,8 +50,8 @@ All notable changes are documented here, following
   `FoodListItemSequence`. Each read fetches one page. The list ends at the first page shorter than
   the page size, which is the SDK's reading of the response and not a service guarantee; a list
   whose length is a multiple of the page size ends with one empty page. Pages are not a snapshot.
-- `FoodListQuery.next(after:)` and `FoodPaginationError`, which report a page that does not
-  answer its query, a page holding more foods than its size, a page number that overflows, and a
+- `FoodListQuery.next(after:)` and `FoodPaginationError`, which report both food list and food
+  search failures: a page that does not answer its query, a page holding more foods than its size, a page number that overflows, and a
   page past FoodData Central's undocumented result window (observed at a page number times page
   size of 200,000). The sequences recognize the window from the service's exact response text;
   single-page calls report it as `FoodDataCentralError.transport`.
@@ -80,14 +88,3 @@ All notable changes are documented here, following
   foods.
 - A SwiftUI demo app, `Examples/SwiftUSDAFoodDataCentralDemo`, that searches foods, loads more
   results a page at a time, and shows the full record for a food.
-
-### Changed
-
-- `FoodDataCentralError` has a new case, `pagination(FoodPaginationError)`, and
-  `FoodRequest.Resolution` has new cases, `foodList(FoodListQuery)` and
-  `foodSearch(FoodSearchQuery)`. Both are public enums, so an exhaustive `switch` over either
-  needs new cases. `FoodDataCentralValidationError` also gains six cases.
-- `FoodListPaginationError` is renamed `FoodPaginationError`, because it now reports food search
-  failures as well as food list failures.
-- `FoodDataCentralClient` has a second `value(for:)` overload for `FoodRequest<FoodListPage>`. Calls
-  with a concrete request type resolve as before.

@@ -1,8 +1,9 @@
 /// One to 25 distinct nutrient numbers, in the order given, for the `nutrients` filter.
 ///
-/// FoodData Central accepts at most 25 nutrient numbers on a food lookup. A food with none of the
-/// requested nutrients is returned with an empty nutrient list rather than an error. The numbers
-/// are sent in the order given; nothing is sorted, removed, or split across requests.
+/// The FoodData Central specification limits a food lookup to 25 nutrient numbers. No response
+/// to a request with a `nutrients` filter has been recorded, so the limit, and what the service
+/// returns for a food with none of the requested nutrients, are unverified. The numbers are sent
+/// in the order given; nothing is sorted, removed, or split across requests.
 ///
 /// ```swift
 /// let macros = try NutrientNumbers([203, 204, 205])

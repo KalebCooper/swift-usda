@@ -9,8 +9,8 @@ networking dependencies. Add `SwiftUSDAFoodDataCentral` when you want a client t
 for you.
 
 ``Endpoint`` describes one request: a path and query relative to
-`https://api.nal.usda.gov/fdc/v1`, an ``EndpointMethod``, and, for a search, a JSON body. ``FoodRequest`` describes an
-operation and the type its result decodes as. Creating either value performs no networking.
+`https://api.nal.usda.gov/fdc/v1`, an ``EndpointMethod``, and, for a search, a JSON body.
+``FoodRequest`` describes an operation and the type its result decodes as. Creating either value performs no networking.
 
 ```swift
 import SwiftUSDAFoodDataCentralModels
@@ -23,8 +23,8 @@ let request: FoodRequest<AbridgedFood> = .abridgedFood(2_346_404)
 
 To send an endpoint yourself, request ``Endpoint/path`` with ``Endpoint/method`` and, when
 present, ``Endpoint/body`` as `application/json`, put your data.gov API key in the `X-Api-Key`
-header, and decode the response body with an ordinary `JSONDecoder`. An endpoint never holds the key, and both of its initializers reject
-an `api_key` query parameter.
+header, and decode the response body with an ordinary `JSONDecoder`. An endpoint never holds the key, and both of its initializers
+reject an `api_key` query parameter.
 
 ```swift
 let food = try JSONDecoder().decode(Food.self, from: body)
@@ -35,8 +35,9 @@ let food = try JSONDecoder().decode(Food.self, from: body)
 FoodData Central returns a different record shape for each data type. A full-format lookup decodes
 as ``Food``, whose case follows the record's `dataType`: ``Food/branded(_:)``,
 ``Food/foundation(_:)``, ``Food/srLegacy(_:)``, or ``Food/survey(_:)``. A data type without a
-modeled shape, such as Experimental, decodes as ``Food/other(dataType:_:)`` with the whole record
-kept as ``JSONValue``. An abridged lookup decodes as ``AbridgedFood``, one shape for every data type.
+modeled shape decodes as ``Food/other(dataType:_:)`` with the whole record kept as ``JSONValue``;
+only the abridged Experimental list has been recorded, so a full-format Experimental record is
+untested. An abridged lookup decodes as ``AbridgedFood``, one shape for every data type.
 
 ``FoodDataType`` is open, so a data type FoodData Central adds later decodes and keeps its exact
 spelling. Identifiers, units, dates, and missing values are kept as sent: dates stay strings, and
@@ -51,8 +52,9 @@ does not declare, such as a Branded food's `foodUpdateLog`, is not kept; only
 ### Validated inputs
 
 ``FoodID`` and ``NutrientNumber`` wrap the provider's identifiers. ``NutrientNumbers`` enforces the
-documented limit of one to 25 distinct nutrients per lookup and throws
-``FoodDataCentralValidationError`` before any request is described.
+specification's limit of one to 25 distinct nutrients per lookup and throws
+``FoodDataCentralValidationError`` before any request is described. No response to a request with a
+`nutrients` filter has been recorded, so the limit and the filter's results are unverified.
 
 ```swift
 let macros = try NutrientNumbers([203, 204, 205])
