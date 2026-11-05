@@ -36,14 +36,15 @@ public enum FoodDataCentralError: Error {
   /// The rejected credential is deliberately not attached to the error.
   case invalidAPIKey
 
-  /// A food list page sequence cannot safely continue.
+  /// A food list or food search page sequence cannot safely continue.
   ///
-  /// Only ``FoodListPageSequence`` and ``FoodListItemSequence`` report this case, before yielding
-  /// the page that caused it. It carries `FoodListPaginationError.resultWindowExceeded` when the
-  /// service refuses a page past its result window, or the error `FoodListQuery.next(after:)`
+  /// Only ``FoodListPageSequence``, ``FoodListItemSequence``, ``FoodSearchPageSequence``, and
+  /// ``FoodSearchItemSequence`` report this case, before yielding the page that caused it. It
+  /// carries `FoodPaginationError.resultWindowExceeded` when the service refuses a page past its
+  /// result window, or the error `FoodListQuery.next(after:)` or `FoodSearchQuery.next(after:)`
   /// throws for a page it cannot continue from. A single page fetched with the client's
   /// `value(for:)` or `send(_:)` reports a refused page as ``transport(_:)`` instead.
-  case pagination(FoodListPaginationError)
+  case pagination(FoodPaginationError)
 
   /// A connection, cancellation, decoding, or HTTP status failure without a gateway error body.
   ///

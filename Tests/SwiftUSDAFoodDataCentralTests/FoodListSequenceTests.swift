@@ -472,7 +472,7 @@ struct FoodListSequenceTests {
     return true
   }
 
-  private static func pagination(_ error: FoodDataCentralError?) -> FoodListPaginationError? {
+  private static func pagination(_ error: FoodDataCentralError?) -> FoodPaginationError? {
     guard case .pagination(let failure) = error else { return nil }
     return failure
   }

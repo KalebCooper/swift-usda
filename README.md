@@ -6,8 +6,9 @@ Food records and nutrients from USDA FoodData Central, with Swift types and `asy
 
 ## Status
 
-Food lookup by FoodData Central identifier works today, one food at a time or several at once
-(`/foods`, one to 20 identifiers per request), in the full and abridged formats, with an optional
+Four FoodData Central endpoints work today: food lookup by identifier (`/food/{fdcId}`), several
+foods at once (`/foods`, one to 20 identifiers per request), food lists (`/foods/list`), and food
+search (`/foods/search`). Lookups come in the full and abridged formats, with an optional
 filter of up to 25 nutrients. Full-format records decode in the shape of their data type:
 Branded, Foundation, SR Legacy, and Survey (FNDDS). Records of any other data type, such as
 Experimental, are kept whole as JSON.
@@ -22,7 +23,10 @@ FoodData Central specification but absent from those responses are optional and 
 the models do not declare is not kept when a record decodes; only records of an unmodeled data type,
 and a Survey input food's nested record, are kept whole.
 
-Not yet built: food search (`/foods/search`).
+Food search (`/foods/search`) works as well: search terms with optional data type, brand owner,
+trade channel, and publication date filters and a sort, posted as a JSON body and read lazily as
+pages or as single foods, one request per page. No search response has been recorded, so the search
+result shapes come from the FoodData Central specification and are unverified.
 
 What FoodData Central does not guarantee:
 
@@ -39,8 +43,20 @@ What FoodData Central does not guarantee:
   undocumented limit; it was observed at a page number times page size of 200,000. The sequences
   report it as `FoodDataCentralError.pagination(.resultWindowExceeded)`, recognized by the
   service's exact response text. Fetching a single page reports it as `.transport`.
+- **Search result shapes.** No `/foods/search` response has been recorded. The result types follow
+  the specification (version 1.0.1); where the service is understood to spell a field differently,
+  such as a nutrient's `value` or a food's `publishedDate`, both spellings are accepted, and neither
+  is verified. The echoed search criteria are decoded leniently and never used to continue.
+- **Search filters.** The trade channel and publication date filters come from the specification,
+  which accepts them only in a `POST` body, and have not been verified against the service. The
+  brand owner filter is sent exactly as given and applies only to Branded foods.
+- **Where a search ends.** A search continues while the reported `currentPage` is below
+  `totalPages`. Those totals are the service's figures for each page, results can change between
+  requests, and pages are not a snapshot. One-based page numbers and the result window refusal are
+  recorded for the food list and assumed for search.
 - **Sort names.** `fdcId` is the only sort name confirmed by a recorded response. The specification
-  warns that `dataType.keyword` and `lowercaseDescription.keyword` will change.
+  warns that `dataType.keyword` and `lowercaseDescription.keyword` will change, but the announced
+  replacement `description` is refused with a `400` today.
 - **Freshness.** FoodData Central publishes no update schedule, so the API guarantees no data
   freshness.
 - **Rate limits.** The api.data.gov gateway allows 1,000 requests per hour. Exceeding it
@@ -96,6 +112,24 @@ for try await food in client.foods(listing: query) {
 
 A page number below 1 or a page size outside 1 to 200 throws `FoodDataCentralValidationError` before
 any request is sent. To fetch just one page, call `client.value(for: .foodList(query))`.
+
+To search, validate a `FoodSearchQuery` and read it the same way. The search terms are sent exactly
+as given and may use FoodData Central's search operators:
+
+```swift
+let search = try FoodSearchQuery("cheddar cheese", dataTypes: [.branded], pageSize: 25)
+
+for try await page in client.foodSearchPages(search) {
+  print(page.currentPage, page.totalPages, page.totalHits)
+}
+
+for try await food in client.foods(matching: search) {
+  print(food.fdcID, food.description)
+}
+```
+
+Empty or whitespace-only search terms throw `FoodDataCentralValidationError` before any request is
+sent. To fetch just one page, call `client.value(for: .foodSearch(search))`.
 
 Each lookup is also available as a reusable `FoodRequest`, sent with `value(for:)`, and as a typed
 `Endpoint`, sent with `send(_:)` or with a networking stack of your own. Operations throw

@@ -42,7 +42,7 @@ All notable changes are documented here, following
   `FoodListItemSequence`. Each read fetches one page. The list ends at the first page shorter than
   the page size, which is the SDK's reading of the response and not a service guarantee; a list
   whose length is a multiple of the page size ends with one empty page. Pages are not a snapshot.
-- `FoodListQuery.next(after:)` and `FoodListPaginationError`, which report a page that does not
+- `FoodListQuery.next(after:)` and `FoodPaginationError`, which report a page that does not
   answer its query, a page holding more foods than its size, a page number that overflows, and a
   page past FoodData Central's undocumented result window (observed at a page number times page
   size of 200,000). The sequences recognize the window from the service's exact response text;
@@ -50,14 +50,42 @@ All notable changes are documented here, following
 - `FoodDataType.experimental`, a data type the service accepts as a filter but its specification
   omits.
 - `FoodDataCentralValidationError.pageNumber` and `.pageSize`.
+- Food search for `POST /foods/search`: `FoodSearchQuery` (search terms that may use FoodData
+  Central's search operators, data types, a brand owner sent exactly as given that applies only to
+  Branded foods, an optional `FoodSort`, a one-based page number, and a page size of 1 to 200),
+  `Endpoint.foodSearch(_:)`, and `FoodRequest.foodSearch(_:)`. Every parameter travels in a JSON body
+  encoded with sorted keys. One-based paging is assumed from the food list and not recorded for
+  search.
+- `TradeChannel` and `FoodPublicationDate` for the trade channel filter (up to three) and the
+  publication date range, which the specification (version 1.0.1) accepts only in a `POST` body.
+  Both are spec-derived and unverified against the service.
+- `FoodSearchResult`, `FoodSearchCriteria`, `SearchResultFood`, and `SearchResultFoodNutrient`,
+  shaped after the specification (version 1.0.1). No search response has been recorded, so these
+  shapes are unverified. Nutrients decode from `value`, `nutrientName`, `nutrientNumber`, and
+  `nutrientId` or from `amount`, `name`, and `number`, and a food's publication date from
+  `publishedDate` or `publicationDate`, the first spelling of each preferred; encoding writes the
+  first spelling. A malformed `foodSearchCriteria` echo decodes as `nil` and never fails the page.
+- `FoodSearchQuery.next(after:)`, which continues while `currentPage` is below `totalPages` and
+  reports a page that does not answer its query, holds more foods than its size, or reports
+  contradictory totals.
+- Lazy search reads: `FoodDataCentralClient.foodSearchPages(_:)` and `foods(matching:)`, and for a
+  search request `pages(for:)` and `items(for:)`, returning `FoodSearchPageSequence` and
+  `FoodSearchItemSequence`. The result window refusal recorded for the food list is assumed for
+  search and reported as `FoodPaginationError.resultWindowExceeded`.
+- `EndpointMethod`, with `Endpoint.method` and `Endpoint.body` for endpoints that post a JSON body.
+- `FoodDataCentralValidationError.emptySearchQuery`, `.publicationDate(year:month:day:)`,
+  `.publicationDateRange(start:end:)`, and `.tradeChannelCount(_:)`.
 - An `HTTPPortable` trait for Linux and Android transports.
-- DocC documentation for both products, including an article on paging food lists.
+- DocC documentation for both products, including articles on paging food lists and searching
+  foods.
 
 ### Changed
 
-- `FoodDataCentralError` has a new case, `pagination(FoodListPaginationError)`, and
-  `FoodRequest.Resolution` has a new case, `foodList(FoodListQuery)`. Both are public enums, so an
-  exhaustive `switch` over either needs a new case. `FoodDataCentralValidationError` also gains two
-  cases.
+- `FoodDataCentralError` has a new case, `pagination(FoodPaginationError)`, and
+  `FoodRequest.Resolution` has new cases, `foodList(FoodListQuery)` and
+  `foodSearch(FoodSearchQuery)`. Both are public enums, so an exhaustive `switch` over either
+  needs new cases. `FoodDataCentralValidationError` also gains six cases.
+- `FoodListPaginationError` is renamed `FoodPaginationError`, because it now reports food search
+  failures as well as food list failures.
 - `FoodDataCentralClient` has a second `value(for:)` overload for `FoodRequest<FoodListPage>`. Calls
   with a concrete request type resolve as before.

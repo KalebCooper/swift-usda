@@ -8,8 +8,8 @@ Use this library for response models, validated inputs, and request descriptions
 networking dependencies. Add `SwiftUSDAFoodDataCentral` when you want a client to send the requests
 for you.
 
-``Endpoint`` describes one `GET` request with no body: a path and query relative to
-`https://api.nal.usda.gov/fdc/v1`. ``FoodRequest`` describes an
+``Endpoint`` describes one request: a path and query relative to
+`https://api.nal.usda.gov/fdc/v1`, an ``EndpointMethod``, and, for a search, a JSON body. ``FoodRequest`` describes an
 operation and the type its result decodes as. Creating either value performs no networking.
 
 ```swift
@@ -21,8 +21,9 @@ print(endpoint.path)  // /food/2346404?format=full
 let request: FoodRequest<AbridgedFood> = .abridgedFood(2_346_404)
 ```
 
-To send an endpoint yourself, send a `GET` for ``Endpoint/path``, put your data.gov API key in the
-`X-Api-Key` header, and decode the response body with an ordinary `JSONDecoder`. An endpoint never holds the key, and both of its initializers reject
+To send an endpoint yourself, request ``Endpoint/path`` with ``Endpoint/method`` and, when
+present, ``Endpoint/body`` as `application/json`, put your data.gov API key in the `X-Api-Key`
+header, and decode the response body with an ordinary `JSONDecoder`. An endpoint never holds the key, and both of its initializers reject
 an `api_key` query parameter.
 
 ```swift
@@ -98,10 +99,35 @@ FoodData Central sends no total or last-page flag, so ``FoodListQuery/next(after
 follows a page: nothing after a page shorter than the page size, and otherwise the same query at the
 next page number. That is the SDK's reading, not a guarantee from the service, and a list whose
 length is an exact multiple of the page size ends with one empty page. A page that does not answer
-its query throws ``FoodListPaginationError``. ``FoodSortField`` is open: only `fdcId` is confirmed by
+its query throws ``FoodPaginationError``. ``FoodSortField`` is open: only `fdcId` is confirmed by
 a recorded response, and the specification warns that its two `.keyword` names will change. The
 service also refuses pages deeper than an undocumented window; see
-``FoodListPaginationError/resultWindowExceeded``.
+``FoodPaginationError/resultWindowExceeded``.
+
+### Food search
+
+``FoodSearchQuery`` describes one page of `POST /foods/search`: search terms, which must hold
+something other than whitespace and may use FoodData Central's search operators, plus optional data
+types, a brand owner, a sort, a one-based page number, and a page size of 1 to 200. Every parameter
+travels in the JSON body, encoded with sorted keys so one query always produces the same bytes.
+The brand owner is sent exactly as given and applies only to Branded foods. The ``TradeChannel``
+filter and the ``FoodPublicationDate`` range come from the specification, which accepts them only
+in a body, and have not been verified against the service.
+
+```swift
+let query = try FoodSearchQuery("cheddar cheese", dataTypes: [.branded], pageSize: 25)
+let endpoint = Endpoint.foodSearch(query)
+print(endpoint.method, endpoint.path)  // post /foods/search
+```
+
+A search page decodes as ``FoodSearchResult``, with the totals the service reports and a list of
+``SearchResultFood`` values. ``FoodSearchQuery/next(after:)`` continues while the page's
+`currentPage` is below its `totalPages` and throws ``FoodPaginationError`` for a page that does
+not answer its query. No search response has been recorded: the shapes follow the FoodData Central
+specification (version 1.0.1), and where the service is understood to spell a field differently,
+such as a nutrient's `value` or a food's `publishedDate`, both spellings are accepted. Neither
+spelling is verified. The echoed ``FoodSearchCriteria`` is decoded leniently and never read for
+continuation.
 
 ### Your own response types
 
@@ -129,17 +155,30 @@ The api.data.gov gateway answers credential and rate-limit failures with a body 
 
 - ``FoodRequest``
 - ``Endpoint``
+- ``EndpointMethod``
 
 ### Food lists
 
 - ``FoodListQuery``
 - ``FoodListPage``
-- ``FoodListPaginationError``
+- ``FoodPaginationError``
 - ``FoodSort``
 - ``FoodSortField``
 - ``FoodSortOrder``
 - ``Endpoint/foodList(_:)``
 - ``FoodRequest/foodList(_:)``
+
+### Food search
+
+- ``FoodSearchQuery``
+- ``FoodSearchResult``
+- ``FoodSearchCriteria``
+- ``SearchResultFood``
+- ``SearchResultFoodNutrient``
+- ``FoodPublicationDate``
+- ``TradeChannel``
+- ``Endpoint/foodSearch(_:)``
+- ``FoodRequest/foodSearch(_:)``
 
 ### Identifiers and inputs
 

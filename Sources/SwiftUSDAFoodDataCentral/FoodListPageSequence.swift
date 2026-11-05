@@ -60,9 +60,9 @@ public struct FoodListPageSequence: AsyncSequence, Sendable {
     /// Cancellation is checked before the page is requested and again before it is returned.
     /// - Returns: The next page, in the order the service returned its foods.
     /// - Throws: ``FoodDataCentralError/pagination(_:)`` with
-    ///   `FoodListPaginationError.resultWindowExceeded` when the service refuses a page past its
-    ///   result window, `FoodListPaginationError.excessFoods(count:pageSize:)` for a page holding
-    ///   more foods than its size, and `FoodListPaginationError.pageNumberOverflow` when the next
+    ///   `FoodPaginationError.resultWindowExceeded` when the service refuses a page past its
+    ///   result window, `FoodPaginationError.excessFoods(count:pageSize:)` for a page holding
+    ///   more foods than its size, and `FoodPaginationError.pageNumberOverflow` when the next
     ///   page number does not fit in an `Int`, none of which yields the page;
     ///   ``FoodDataCentralError/gateway(_:response:)`` for gateway errors; and
     ///   ``FoodDataCentralError/transport(_:)`` for other HTTP, decoding, connection, and
@@ -102,7 +102,7 @@ public struct FoodListPageSequence: AsyncSequence, Sendable {
         guard !Task.isCancelled else { throw .transport(.cancelled) }
         let page = FoodListPage(
           foods: response.value, pageNumber: query.pageNumber, pageSize: query.pageSize)
-        do throws(FoodListPaginationError) {
+        do throws(FoodPaginationError) {
           self.query = try query.next(after: page)
         } catch {
           throw .pagination(error)

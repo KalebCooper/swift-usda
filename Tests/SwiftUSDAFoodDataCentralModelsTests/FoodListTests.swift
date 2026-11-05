@@ -174,7 +174,7 @@ struct FoodListTests {
   func aPageWithMoreFoodsThanItsSizeIsRejected() throws {
     let query = try FoodListQuery(pageSize: 1)
     let page = FoodListPage(foods: try decodeFoods(.listFoundation), pageNumber: 1, pageSize: 1)
-    #expect(throws: FoodListPaginationError.excessFoods(count: 2, pageSize: 1)) {
+    #expect(throws: FoodPaginationError.excessFoods(count: 2, pageSize: 1)) {
       try query.next(after: page)
     }
   }
@@ -183,7 +183,7 @@ struct FoodListTests {
   func aPageForAnotherPageNumberIsRejected() throws {
     let query = try FoodListQuery(pageNumber: 2, pageSize: 2)
     let page = FoodListPage(foods: try decodeFoods(.listFoundation), pageNumber: 1, pageSize: 2)
-    #expect(throws: FoodListPaginationError.unexpectedPageNumber(actual: 1, expected: 2)) {
+    #expect(throws: FoodPaginationError.unexpectedPageNumber(actual: 1, expected: 2)) {
       try query.next(after: page)
     }
   }
@@ -192,7 +192,7 @@ struct FoodListTests {
   func aPageForAnotherPageSizeIsRejected() throws {
     let query = try FoodListQuery(pageSize: 2)
     let page = FoodListPage(foods: try decodeFoods(.listFoundation), pageNumber: 1, pageSize: 50)
-    #expect(throws: FoodListPaginationError.unexpectedPageSize(actual: 50, expected: 2)) {
+    #expect(throws: FoodPaginationError.unexpectedPageSize(actual: 50, expected: 2)) {
       try query.next(after: page)
     }
   }
@@ -202,7 +202,7 @@ struct FoodListTests {
     let query = try FoodListQuery(pageNumber: Int.max, pageSize: 2)
     let page = FoodListPage(
       foods: try decodeFoods(.listFoundation), pageNumber: Int.max, pageSize: 2)
-    #expect(throws: FoodListPaginationError.pageNumberOverflow) {
+    #expect(throws: FoodPaginationError.pageNumberOverflow) {
       try query.next(after: page)
     }
   }

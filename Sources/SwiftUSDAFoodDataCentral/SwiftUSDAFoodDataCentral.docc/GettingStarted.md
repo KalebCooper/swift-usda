@@ -89,6 +89,25 @@ for try await food in client.foods(listing: query) {
 `FoodDataCentralValidationError.pageSize` for a page size outside 1 to 200, before any request is
 sent. <doc:PagingFoodLists> explains where a list ends and what the SDK does not guarantee.
 
+### Search foods
+
+To search, validate a `FoodSearchQuery` and read it with
+``FoodDataCentralClient/foodSearchPages(_:)`` for pages or
+``FoodDataCentralClient/foods(matching:)`` for foods one at a time. Each read posts one page, and
+the search continues while the reported `currentPage` is below `totalPages`.
+
+```swift
+let query = try FoodSearchQuery("cheddar cheese", dataTypes: [.branded], pageSize: 25)
+for try await food in client.foods(matching: query) {
+  print(food.fdcID, food.description)
+}
+```
+
+`FoodSearchQuery` throws `FoodDataCentralValidationError.emptySearchQuery` for search terms that
+are empty or only whitespace, before any request is sent. No search response has been recorded, so
+the result shapes follow the specification and are unverified. <doc:SearchingFoods> covers the
+filters, sort names, and what the SDK does not guarantee.
+
 ### Choose a level
 
 Each lookup is available at three equivalent levels, and all of them send the same request with the

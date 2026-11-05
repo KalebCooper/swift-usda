@@ -22,6 +22,12 @@ public struct FoodRequest<Response>: Hashable, Sendable {
     /// Only ``FoodRequest/foodList(_:)`` creates this resolution, so it appears only when
     /// `Response` is ``FoodListPage``.
     case foodList(FoodListQuery)
+    /// Send ``Endpoint/foodSearch(_:)`` for the query and decode the ``FoodSearchResult``;
+    /// ``FoodSearchQuery/next(after:)`` describes each following page.
+    ///
+    /// Only ``FoodRequest/foodSearch(_:)`` creates this resolution, so it appears only when
+    /// `Response` is ``FoodSearchResult``.
+    case foodSearch(FoodSearchQuery)
   }
 
   /// How this request is carried out.

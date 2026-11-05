@@ -7,10 +7,11 @@ import Foundation
 /// One request to the FoodData Central API, described as plain values, and the type its response
 /// decodes as.
 ///
-/// An endpoint names a path relative to `https://api.nal.usda.gov/fdc/v1` for a `GET` request with
-/// no body. It sends nothing itself: `SwiftUSDAFoodDataCentral` sends it, or a networking stack of
-/// your own does, by requesting ``path`` with your data.gov API key in the `X-Api-Key` header, then
-/// decoding the response body as `Response`.
+/// An endpoint names a path relative to `https://api.nal.usda.gov/fdc/v1`, its ``method``, and, for a
+/// search, a JSON ``body``. It sends nothing itself: `SwiftUSDAFoodDataCentral` sends it, or a
+/// networking stack of your own does, by requesting ``path`` with ``method`` and ``body`` (as
+/// `application/json`) and your data.gov API key in the `X-Api-Key` header, then decoding the
+/// response body as `Response`.
 /// The key never belongs in this value, and both initializers reject an `api_key` query parameter.
 ///
 /// ```swift
@@ -18,13 +19,25 @@ import Foundation
 /// print(endpoint.path)  // "/food/2346404?format=full"
 /// ```
 public struct Endpoint<Response>: Hashable, Sendable {
+  /// The UTF-8 JSON request body, or `nil` when the request sends none.
+  ///
+  /// Only ``foodSearch(_:)`` produces a body; every endpoint created from a path or a link sends
+  /// none. The bytes are fixed when the endpoint is created and take part in equality and hashing.
+  public let body: Data?
+
+  /// The HTTP method the request uses.
+  ///
+  /// Endpoints created from a path or a link are ``EndpointMethod/get``. Only ``foodSearch(_:)``
+  /// produces ``EndpointMethod/post``.
+  public let method: EndpointMethod
+
   /// The validated percent-encoded path and optional query, relative to
   /// `https://api.nal.usda.gov/fdc/v1`, starting with one slash.
   ///
   /// The exact spelling is retained and cannot be changed after initialization.
   public let path: String
 
-  /// Creates an endpoint from an absolute HTTPS FoodData Central API link.
+  /// Creates a GET endpoint with no body from an absolute HTTPS FoodData Central API link.
   ///
   /// Only `api.nal.usda.gov`, with no port or port 443, and paths below `/fdc/v1/` are accepted.
   /// Returns `nil` for another scheme or origin, credentials, a fragment, an `api_key` query
@@ -51,7 +64,7 @@ public struct Endpoint<Response>: Hashable, Sendable {
     self.init(path: String(components.percentEncodedPath.dropFirst("/fdc/v1".count)) + query)
   }
 
-  /// Creates a GET endpoint from an encoded relative API path and optional query.
+  /// Creates a GET endpoint with no body from an encoded relative API path and optional query.
   ///
   /// Returns `nil` for an absolute or authority path, an empty resource path such as `/`, a
   /// fragment, raw whitespace or other bytes outside printable ASCII, a backslash, a dot segment in
@@ -75,6 +88,14 @@ public struct Endpoint<Response>: Hashable, Sendable {
       !components.path.split(separator: "/").contains(where: { $0 == "." || $0 == ".." }),
       !(components.queryItems ?? []).contains(where: { $0.name.lowercased() == "api_key" })
     else { return nil }
+    self.body = nil
+    self.method = .get
+    self.path = path
+  }
+
+  private init(body: Data?, method: EndpointMethod, path: String) {
+    self.body = body
+    self.method = method
     self.path = path
   }
 
@@ -85,6 +106,11 @@ public struct Endpoint<Response>: Hashable, Sendable {
       preconditionFailure("Fixed routes with validated values and encoded queries are valid paths.")
     }
     return endpoint
+  }
+
+  // A fixed route sent as POST with a JSON body. The route is validated like any other path.
+  static func builtIn(path: String, postingJSON body: Data) -> Self {
+    Self(body: body, method: .post, path: builtIn(path: path).path)
   }
 
   // Joins name-value pairs in the given order, percent-encoding every byte outside the unreserved

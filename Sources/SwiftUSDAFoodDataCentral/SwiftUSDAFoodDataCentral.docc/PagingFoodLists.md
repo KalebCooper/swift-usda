@@ -66,7 +66,7 @@ the exact limit is unknown, and the service may change it.
 
 Inside ``FoodListPageSequence`` and ``FoodListItemSequence``, a `400` whose body is exactly that
 text arrives as ``FoodDataCentralError/pagination(_:)`` with
-`FoodListPaginationError.resultWindowExceeded`. The service sends no error code, so the match is on
+`FoodPaginationError.resultWindowExceeded`. The service sends no error code, so the match is on
 the exact body text; any other `400` stays ``FoodDataCentralError/transport(_:)``. A single page
 fetched with `value(for:)` or ``FoodDataCentralClient/send(_:)`` does not make that distinction and
 reports the refusal as ``FoodDataCentralError/transport(_:)`` with the original body.
@@ -118,5 +118,5 @@ the 1,000-request hourly allowance.
 
 ### Reading a list request
 
-- ``FoodDataCentralClient/pages(for:)``
-- ``FoodDataCentralClient/items(for:)``
+- ``FoodDataCentralClient/pages(for:)->FoodListPageSequence``
+- ``FoodDataCentralClient/items(for:)->FoodListItemSequence``

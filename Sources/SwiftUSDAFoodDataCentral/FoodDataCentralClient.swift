@@ -12,8 +12,9 @@ import SwiftUSDAFoodDataCentralModels
 /// Use ``food(_:nutrients:)``, ``abridgedFood(_:nutrients:)``, ``foods(_:nutrients:)``, or
 /// ``abridgedFoods(_:nutrients:)`` for an everyday lookup, `value(for:)` for a reusable request,
 /// or ``send(_:)`` for a typed endpoint. List foods lazily with ``foodListPages(_:)`` and
-/// ``foods(listing:)``, or with ``pages(for:)`` and ``items(for:)`` for a list request. Every
-/// entry point sends the API key in the `X-Api-Key` header, never in the URL, and reports the same
+/// ``foods(listing:)``, and search them lazily with ``foodSearchPages(_:)`` and
+/// ``foods(matching:)``. For a list or search request, `pages(for:)` and `items(for:)` return the
+/// matching page and food sequences. Every entry point sends the API key in the `X-Api-Key` header, never in the URL, and reports the same
 /// typed errors. No retries or redirects are performed automatically, and the client does not
 /// track the gateway's rate limit.
 ///
@@ -103,6 +104,11 @@ public struct FoodDataCentralClient: Sendable {
         preconditionFailure("Only FoodRequest<FoodListPage> can hold a food list resolution.")
       }
       return page
+    case .foodSearch(let query):
+      guard let page = try await send(.foodSearch(query)) as? Value else {
+        preconditionFailure("Only FoodRequest<FoodSearchResult> can hold a food search resolution.")
+      }
+      return page
     }
   }
 
@@ -110,7 +116,15 @@ public struct FoodDataCentralClient: Sendable {
     var headers = HTTPFields()
     headers[.accept] = "application/json"
     headers[Self.apiKeyField] = configuration.apiKey
-    return Request(headers: headers, method: .get, path: endpoint.path)
+    // The body is sent as the exact bytes the endpoint holds.
+    let method: HTTPRequest.Method =
+      switch endpoint.method {
+      case .get: .get
+      case .post: .post
+      }
+    return Request(
+      body: endpoint.body.map { .bytes($0, contentType: "application/json") } ?? .none,
+      headers: headers, method: method, path: endpoint.path)
   }
 
   private static let apiKeyField: HTTPField.Name = {

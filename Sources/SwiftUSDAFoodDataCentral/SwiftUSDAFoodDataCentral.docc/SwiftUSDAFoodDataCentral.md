@@ -49,6 +49,17 @@ for try await page in client.foodListPages(query) {
 }
 ```
 
+To search, validate a `FoodSearchQuery` and read the results the same way. The search continues
+while the reported `currentPage` is below `totalPages`. No search response has been recorded, so the
+result shapes follow the FoodData Central specification and are unverified. See <doc:SearchingFoods>.
+
+```swift
+let search = try FoodSearchQuery("cheddar cheese", dataTypes: [.branded])
+for try await food in client.foods(matching: search) {
+  print(food.fdcID, food.description)
+}
+```
+
 The client sends the key in the `X-Api-Key` header, never in the URL, and checks cancellation before
 every request. It does not retry, follow redirects, cache, or track the gateway's rate limit.
 Operations throw ``FoodDataCentralError``. Credential and rate-limit refusals from the api.data.gov
@@ -72,7 +83,17 @@ in the public domain under CC0 1.0, and FoodData Central asks to be credited as 
 - <doc:PagingFoodLists>
 - ``FoodDataCentralClient/foodListPages(_:)``
 - ``FoodDataCentralClient/foods(listing:)``
-- ``FoodDataCentralClient/pages(for:)``
-- ``FoodDataCentralClient/items(for:)``
+- ``FoodDataCentralClient/pages(for:)->FoodListPageSequence``
+- ``FoodDataCentralClient/items(for:)->FoodListItemSequence``
 - ``FoodListPageSequence``
 - ``FoodListItemSequence``
+
+### Searching foods
+
+- <doc:SearchingFoods>
+- ``FoodDataCentralClient/foodSearchPages(_:)``
+- ``FoodDataCentralClient/foods(matching:)``
+- ``FoodDataCentralClient/pages(for:)->FoodSearchPageSequence``
+- ``FoodDataCentralClient/items(for:)->FoodSearchItemSequence``
+- ``FoodSearchPageSequence``
+- ``FoodSearchItemSequence``

@@ -9,7 +9,7 @@ import SwiftUSDAFoodDataCentralModels
 extension FoodDataCentralClient {
   /// Lazily lists foods page by page, starting at the query's page.
   ///
-  /// Sends `FoodRequest.foodList(_:)` through ``pages(for:)``. Nothing is sent until the sequence
+  /// Sends `FoodRequest.foodList(_:)` through `pages(for:)`. Nothing is sent until the sequence
   /// is read, and each page after the first is the query at the next page number, with the same
   /// data types, page size, and sort.
   ///
@@ -28,7 +28,7 @@ extension FoodDataCentralClient {
 
   /// Lazily lists foods one at a time, starting at the query's page.
   ///
-  /// Sends `FoodRequest.foodList(_:)` through ``items(for:)``, yielding every food of
+  /// Sends `FoodRequest.foodList(_:)` through `items(for:)`, yielding every food of
   /// ``foodListPages(_:)`` in the same order.
   ///
   /// ```swift
@@ -46,7 +46,7 @@ extension FoodDataCentralClient {
 
   /// Lazily reads the foods of a list request, one at a time.
   ///
-  /// The foods come from ``pages(for:)`` for the same request, in page order and then in the
+  /// The foods come from `pages(for:)` for the same request, in page order and then in the
   /// order the service returned them.
   /// - Parameter request: The list request to traverse.
   /// - Returns: The foods, as a ``FoodListItemSequence`` whose reads throw
@@ -93,6 +93,8 @@ extension FoodDataCentralClient {
         return .request(self.request(for: Endpoint.foodList(following)))
       }
       return FoodListPageSequence(.foodList(pages, query))
+    case .foodSearch:
+      preconditionFailure("Only FoodRequest<FoodSearchResult> can hold a food search resolution.")
     }
   }
 
@@ -101,7 +103,7 @@ extension FoodDataCentralClient {
   /// A `FoodRequest.foodList(_:)` request sends `Endpoint.foodList(_:)` for its query and wraps
   /// the returned foods in a `FoodListPage` with the query's page number and size. A request made
   /// with `FoodRequest.init(endpoint:)` sends that endpoint and decodes its body as a
-  /// `FoodListPage`. Only the one page is fetched; continue with ``pages(for:)`` or
+  /// `FoodListPage`. Only the one page is fetched; continue with `pages(for:)` or
   /// `FoodListQuery.next(after:)`.
   /// - Parameter request: The list request to execute.
   /// - Returns: The page, in the order the service returned its foods.
@@ -117,6 +119,8 @@ extension FoodDataCentralClient {
       return try await send(endpoint)
     case .foodList(let query):
       return try await foodListPage(query)
+    case .foodSearch:
+      preconditionFailure("Only FoodRequest<FoodSearchResult> can hold a food search resolution.")
     }
   }
 

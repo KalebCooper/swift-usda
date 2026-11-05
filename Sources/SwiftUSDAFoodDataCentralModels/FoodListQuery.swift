@@ -6,7 +6,7 @@
 /// so every data type is listed. Creating a query performs no I/O.
 ///
 /// FoodData Central limits how deep a list can page and does not document the limit; see
-/// ``FoodListPaginationError/resultWindowExceeded``.
+/// ``FoodPaginationError/resultWindowExceeded``.
 ///
 /// ```swift
 /// let query = try FoodListQuery(dataTypes: [.foundation], pageSize: 100)
@@ -65,12 +65,12 @@ public struct FoodListQuery: Hashable, Sendable {
   /// types, page size, and sort. The list can change between requests; pages are not a snapshot.
   /// - Parameter page: The page received for this query.
   /// - Returns: The query for the following page, or `nil` when `page` is the last.
-  /// - Throws: ``FoodListPaginationError/unexpectedPageNumber(actual:expected:)`` or
-  ///   ``FoodListPaginationError/unexpectedPageSize(actual:expected:)`` for a page that answers a
-  ///   different query, ``FoodListPaginationError/excessFoods(count:pageSize:)`` for a page holding
-  ///   more foods than its size, and ``FoodListPaginationError/pageNumberOverflow`` when the next
+  /// - Throws: ``FoodPaginationError/unexpectedPageNumber(actual:expected:)`` or
+  ///   ``FoodPaginationError/unexpectedPageSize(actual:expected:)`` for a page that answers a
+  ///   different query, ``FoodPaginationError/excessFoods(count:pageSize:)`` for a page holding
+  ///   more foods than its size, and ``FoodPaginationError/pageNumberOverflow`` when the next
   ///   page number does not fit in an `Int`.
-  public func next(after page: FoodListPage) throws(FoodListPaginationError) -> Self? {
+  public func next(after page: FoodListPage) throws(FoodPaginationError) -> Self? {
     guard page.pageNumber == pageNumber else {
       throw .unexpectedPageNumber(actual: page.pageNumber, expected: pageNumber)
     }
