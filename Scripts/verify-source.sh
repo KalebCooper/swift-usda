@@ -18,17 +18,6 @@
 
 set -u
 
-# Source-dependent validation is unavailable until both real service modules exist.
-readiness_root="${VERIFY_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-if [ "${1:-}" != "--self-test" ]; then
-  for module in SwiftUSDAFoodDataCentral SwiftUSDAFoodDataCentralModels; do
-    if [ ! -d "$readiness_root/Sources/$module" ] || ! find "$readiness_root/Sources/$module" -name '*.swift' -type f | grep -q .; then
-      echo "Not ready: $module source is not implemented; see IMPLEMENTATION_READINESS.md." >&2
-      exit 1
-    fi
-  done
-fi
-
 ROOT="${VERIFY_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 FAILURES=0
 

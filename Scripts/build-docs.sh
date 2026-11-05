@@ -3,17 +3,6 @@
 # Dependencies must compile, but their documentation is not part of this site.
 set -euo pipefail
 
-# Source-dependent validation is unavailable until both real service modules exist.
-readiness_root="${VERIFY_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-if true; then
-  for module in SwiftUSDAFoodDataCentral SwiftUSDAFoodDataCentralModels; do
-    if [ ! -d "$readiness_root/Sources/$module" ] || ! find "$readiness_root/Sources/$module" -name '*.swift' -type f | grep -q .; then
-      echo "Not ready: $module source is not implemented; see IMPLEMENTATION_READINESS.md." >&2
-      exit 1
-    fi
-  done
-fi
-
 modules="${1:?Usage: bash Scripts/build-docs.sh MODULES_DIRECTORY OUTPUT_DIRECTORY [TARGET]}"
 output="${2:?Supply a new output directory}"
 sdk="$(xcrun --sdk iphonesimulator --show-sdk-path)"

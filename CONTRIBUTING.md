@@ -1,11 +1,33 @@
 # Contributing
 
-The repository currently contains infrastructure only. Run `bash Scripts/verify.sh --scaffold` and `bash Scripts/verify.sh --self-test` before committing infrastructure changes. `bash Scripts/verify.sh` is the full source gate and intentionally fails in this state.
+Run `bash Scripts/verify.sh` before every commit; it must exit 0. It checks source boundaries and
+imports, forbidden APIs, test conventions, workflow timeouts, user-facing text, and strict
+formatting. After changing a script under `Scripts/`, also run `bash Scripts/verify.sh --self-test`,
+and add a planted violation to the self-test for every new check.
 
-The first change with source is one complete FoodData Central slice: portable models and endpoints and their independent client, together with recorded fixtures, Swift Testing suites, consumer call-site examples, DocC catalogs, a demo, and an honest README and changelog update. Preserve FDC identifiers, units, nulls, unknown values, and data-type distinctions.
+Build and run the tests for the generated `swift-usda-Package` scheme on an iOS simulator, run
+`bash Scripts/linux-test.sh` before pushing anything that reaches Linux, and build both DocC catalogs
+with zero warnings:
 
-Never commit a data.gov API key. Strip the `api_key` query parameter from every recorded fixture and its documentation; data.gov deactivates keys found in public repositories.
+```sh
+bash Scripts/build-docs.sh /path/to/Debug-iphonesimulator /tmp/swift-usda-docs
+```
 
-Use Swift 6, the manifest's shared strict settings, alphabetical declarations within logical groups, and strict formatting. Models have no networking dependencies. Tests use recorded provider data rather than live requests. Use Xcode MCP tools for Apple project operations and generated package schemes.
+Widen coverage one complete FoodData Central slice at a time: models and endpoints, the client
+method, recorded fixtures, Swift Testing suites, consumer call-site examples, DocC, README, and
+changelog together. Preserve FDC identifiers, units, nulls, unknown values, and data-type
+distinctions.
 
-Before publishing source, complete the Apple, Linux default and portable, Android, documentation, and demo gates listed in [implementation readiness](IMPLEMENTATION_READINESS.md). CI timeouts are provisional until measured green runs exist. Use focused Conventional Commits; publishing requires owner authorization.
+Tests never reach the live API. Record each response body once into
+`Sources/SwiftUSDAFoodDataCentralTestSupport/Fixtures/`, add a documented `Fixture` case naming the
+exact path and query, and read it with `data()`. Send the key only in the `X-Api-Key` header while
+recording, and never commit a data.gov API key in a fixture, test, or document; data.gov deactivates
+keys found in public repositories.
+
+Use Swift 6, the manifest's shared strict settings, alphabetical declarations within logical groups,
+and strict formatting. Models have no networking dependencies. Use Xcode MCP tools for Apple project
+operations and generated package schemes.
+
+Before publishing, complete the Android, documentation, demo, and hosted gates listed in
+[implementation readiness](IMPLEMENTATION_READINESS.md). CI timeouts are provisional until measured
+green runs exist. Use focused Conventional Commits; publishing requires owner authorization.

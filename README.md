@@ -2,36 +2,125 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Swift package infrastructure for USDA FoodData Central.
+Food records and nutrients from USDA FoodData Central, with Swift types and `async`/`await`.
 
 ## Status
 
-Infrastructure only. No government API, library products, source targets, fixtures, or tests are implemented. The package is not ready for application use and has no release or remote repository configured.
+Food lookup by FoodData Central identifier works today, in the full and abridged formats, with an
+optional filter of up to 25 nutrients. Full-format records decode in the shape of their data type:
+Branded, Foundation, SR Legacy, and Survey (FNDDS). Records of any other data type, such as
+Experimental, are kept whole as JSON.
 
-Future coverage is FoodData Central food search, food details, nutrients, portions, and branded and generic foods. FoodData Central requires a data.gov API key and publishes no update schedule, so the API guarantees no data freshness. Coverage, ordering, and pagination behavior must be verified when implemented.
+Each modeled shape is checked against a response recorded from the live API: one full record of
+each of the four data types, and abridged Foundation and Branded records. Fields documented in the
+FoodData Central specification but absent from those responses are optional and unverified. A field
+the models do not declare is not kept when a record decodes; only records of an unmodeled data type,
+and a Survey input food's nested record, are kept whole.
+
+Not yet built: multiple foods by identifier (`/foods`), food lists (`/foods/list`), and food search
+(`/foods/search`).
+
+What FoodData Central does not guarantee:
+
+- **Freshness.** FoodData Central publishes no update schedule, so the API guarantees no data
+  freshness.
+- **Rate limits.** The api.data.gov gateway allows 1,000 requests per hour. Exceeding it
+  returns `429` and blocks the key for an hour. The client does not retry, wait, or track the limit.
+- **The shared demo key.** data.gov's `DEMO_KEY` allows 30 requests per hour and 50 per day for each
+  IP address. It is for exploration, not for applications.
+
+Identifiers, units, dates, and missing values are kept as FoodData Central sends them. Nothing is
+converted, defaulted, or filtered, except that a field FoodData Central sends as an integer in some
+responses and a string in others, such as `ndbNumber`, decodes into one string.
 
 ## Usage
 
-Run `bash Scripts/verify.sh --scaffold` to validate infrastructure. The default verification command deliberately fails until service source exists. See [implementation readiness](IMPLEMENTATION_READINESS.md) for deferred gates.
+Get a free data.gov API key at [api.data.gov](https://api.data.gov/signup/) and pass it to the
+client. There is no default key, and the library never reads the environment. Keep the key out of
+source control and application bundles: data.gov deactivates keys it finds in public repositories.
+The client sends the key in the `X-Api-Key` header, never in the URL.
+
+```swift
+import SwiftUSDAFoodDataCentral
+import SwiftUSDAFoodDataCentralModels
+
+let client = try FoodDataCentralClient(apiKey: apiKey)
+let food = try await client.abridgedFood(2_346_404)
+print(food.description)
+```
+
+Each lookup is also available as a reusable `FoodRequest`, sent with `value(for:)`, and as a typed
+`Endpoint`, sent with `send(_:)` or with a networking stack of your own. Operations throw
+`FoodDataCentralError`.
 
 ## Example
 
-No API example is available because no API is implemented.
+Look up a food in the full format, limited to protein, fat, and carbohydrate:
+
+```swift
+import SwiftUSDAFoodDataCentral
+import SwiftUSDAFoodDataCentralModels
+
+let client = try FoodDataCentralClient(apiKey: apiKey)
+let macros = try NutrientNumbers([203, 204, 205])
+
+do {
+  switch try await client.food(2_346_404, nutrients: macros) {
+  case .branded(let food): print(food.brandOwner ?? "No brand owner", food.description)
+  case .foundation(let food): print(food.description)
+  case .other(let dataType, _): print("Not modeled:", dataType.rawValue)
+  case .srLegacy(let food): print(food.description)
+  case .survey(let food): print(food.description)
+  }
+} catch .gateway(let response, _) {
+  print("Gateway refused the request:", response.error.code)
+} catch {
+  print(error)
+}
+```
+
+An unknown identifier arrives as `FoodDataCentralError.transport` with the `404` response. Credential
+and rate-limit refusals arrive as `.gateway` with the gateway's code, such as `API_KEY_INVALID` or
+`OVER_RATE_LIMIT`.
 
 ## Products
 
-| Product | Status |
+| Product | Contents |
 | --- | --- |
-| None | Products are added only with working service source. |
+| `SwiftUSDAFoodDataCentral` | `FoodDataCentralClient`, `FoodDataCentralConfiguration`, and `FoodDataCentralError`, built on [swifty-networking](https://github.com/KalebCooper/swifty-networking). |
+| `SwiftUSDAFoodDataCentralModels` | `Codable` food records, validated inputs, `FoodRequest`, and `Endpoint` values, with no networking dependency, for use with your own networking stack. |
 
 ## Requirements
 
-The manifest declares Swift tools 6.2, Swift 6 language mode, and iOS, macOS, tvOS, visionOS, and watchOS 26. Infrastructure verification needs Bash, Python 3, Git, and Swift with swift-format. No Apple, Linux, or Android library compatibility has been established yet.
+Requires Swift 6.2 or later. Supports iOS, macOS, tvOS, visionOS, and watchOS 26 or later, and
+Linux, which is tested with and without the `HTTPPortable` trait. Android builds use the same
+`HTTPPortable` trait but are not yet verified, and hosted CI is not yet running.
 
 ## Installation
 
-No installable library or published version exists yet. Dependency pins and the portable transport trait will be added with the first implemented slice.
+No version has been released yet, so depend on the `main` branch until the first release.
+
+In Xcode, add `https://github.com/KalebCooper/swift-usda` as a package dependency and select the
+products you need. For a Swift package, add:
+
+```swift
+.package(url: "https://github.com/KalebCooper/swift-usda.git", branch: "main")
+```
+
+Then add the products to your target's dependencies:
+
+```swift
+.product(name: "SwiftUSDAFoodDataCentral", package: "swift-usda"),
+.product(name: "SwiftUSDAFoodDataCentralModels", package: "swift-usda"),
+```
+
+On Linux and Android, also add `traits: ["HTTPPortable"]` to the package dependency and supply an
+`AsyncHTTPClientTransport` from [swifty-networking](https://github.com/KalebCooper/swifty-networking)
+to the client's `transport:` initializer. The examples above use the Apple-platform initializer.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). FoodData Central data is in the public domain under CC0 1.0, and FoodData Central asks to be credited as its source: [USDA FoodData Central](https://fdc.nal.usda.gov/).
+MIT. See [LICENSE](LICENSE).
+
+Data comes from [USDA FoodData Central](https://fdc.nal.usda.gov/), which is in the public domain
+under CC0 1.0. FoodData Central asks to be credited as the source.

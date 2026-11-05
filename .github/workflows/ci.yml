@@ -7,8 +7,8 @@ name: CI
 # costs money: batch commits and push once, and verify locally before pushing rather than letting CI
 # diagnose a failure.
 #
-# The package is an infrastructure scaffold. Only the scaffold and lint jobs run; the source lanes are
-# kept in their final shape and disabled until the first FoodData Central slice passes its local gates.
+# Only the source gate and lint jobs run so far. The Linux, Android, and Apple lanes are kept in their
+# final shape and disabled until the first FoodData Central slice passes its local platform gates.
 on:
   push:
     branches: [main]
@@ -152,23 +152,19 @@ jobs:
       - uses: actions/checkout@v7
       - name: Show swift-format version
         run: swift format --version
-      # Any finding fails the job. The manifest is the only Swift file in the scaffold; the first
-      # service slice widens this to
-      # `Sources Tests Examples/SwiftUSDAFoodDataCentralDemo/SwiftUSDAFoodDataCentralDemo`.
+      # Any finding fails the job. The demo sources join this list when the demo app exists.
       - name: Lint
-        run: swift format lint --strict Package.swift
+        run: swift format lint --strict --recursive Sources Tests
 
-  scaffold:
-    name: Validate package infrastructure
+  source:
+    name: Source gate
     runs-on: ubuntu-latest
     container: swift:6.3-noble
-    # Provisional until this package has green runs on main.
+    # Provisional ceiling until this package has green runs on main.
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - name: Install validation runtime
-        run: apt-get update && apt-get install -y python3
-      - name: Validate scaffold
-        run: bash Scripts/verify.sh --scaffold
-      - name: Validate gate self-tests
+      - name: Run the source gate
+        run: bash Scripts/verify.sh
+      - name: Prove every gate check still discriminates
         run: bash Scripts/verify.sh --self-test

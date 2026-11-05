@@ -18,17 +18,6 @@
 
 set -euo pipefail
 
-# Source-dependent validation is unavailable until both real service modules exist.
-readiness_root="${VERIFY_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-if true; then
-  for module in SwiftUSDAFoodDataCentral SwiftUSDAFoodDataCentralModels; do
-    if [ ! -d "$readiness_root/Sources/$module" ] || ! find "$readiness_root/Sources/$module" -name '*.swift' -type f | grep -q .; then
-      echo "Not ready: $module source is not implemented; see IMPLEMENTATION_READINESS.md." >&2
-      exit 1
-    fi
-  done
-fi
-
 # Pinned: a local pass is only evidence about a CI lane if it is the same toolchain.
 readonly IMAGE="swift:6.3-noble"
 

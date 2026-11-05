@@ -1,0 +1,122 @@
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
+import Foundation
+#endif
+import HTTPCore
+import HTTPTypes
+import SwiftUSDAFoodDataCentralModels
+
+/// A Sendable client for the USDA FoodData Central API.
+///
+/// Use ``food(_:nutrients:)`` or ``abridgedFood(_:nutrients:)`` for an everyday lookup,
+/// ``value(for:)`` for a reusable request, or ``send(_:)`` for a typed endpoint. Every entry point
+/// sends the API key in the `X-Api-Key` header, never in the URL, and reports the same typed
+/// errors. No retries or redirects are performed automatically, and the client does not track the
+/// gateway's rate limit.
+///
+/// ```swift
+/// let client = FoodDataCentralClient(
+///   configuration: try FoodDataCentralConfiguration(apiKey: apiKey), transport: transport)
+/// let food = try await client.food(2_346_404)
+/// ```
+public struct FoodDataCentralClient: Sendable {
+  /// The explicit credential configuration used by this client.
+  public let configuration: FoodDataCentralConfiguration
+
+  let client: HTTPClient
+
+  /// Creates a client using a supplied transport on any supported platform.
+  /// - Parameters:
+  ///   - configuration: Required API-key configuration.
+  ///   - transport: The transport that sends each request.
+  public init(configuration: FoodDataCentralConfiguration, transport: any Transport) {
+    self.configuration = configuration
+    self.client = HTTPClient(baseURL: Self.baseURL, redirectPolicy: .never, transport: transport)
+  }
+
+  /// Looks up one food in the abridged format.
+  ///
+  /// Sends `FoodRequest.abridgedFood(_:nutrients:)` through ``value(for:)``.
+  /// - Parameters:
+  ///   - id: The food's FoodData Central identifier.
+  ///   - nutrients: The nutrients to return, or `nil` for all of them.
+  /// - Returns: The food in the abridged shape shared by every data type.
+  /// - Throws: ``FoodDataCentralError/gateway(_:response:)`` for gateway errors, or
+  ///   ``FoodDataCentralError/transport(_:)`` for an unknown identifier (`404`), other HTTP,
+  ///   decoding, connection, and cancellation failures.
+  public func abridgedFood(
+    _ id: FoodID, nutrients: NutrientNumbers? = nil
+  ) async throws(FoodDataCentralError) -> AbridgedFood {
+    try await value(for: .abridgedFood(id, nutrients: nutrients))
+  }
+
+  /// Looks up one food in the full format, in the shape its data type defines.
+  ///
+  /// Sends `FoodRequest.food(_:nutrients:)` through ``value(for:)``.
+  /// - Parameters:
+  ///   - id: The food's FoodData Central identifier.
+  ///   - nutrients: The nutrients to return, or `nil` for all of them.
+  /// - Returns: The food, as the case of `Food` its data type selects.
+  /// - Throws: ``FoodDataCentralError/gateway(_:response:)`` for gateway errors, or
+  ///   ``FoodDataCentralError/transport(_:)`` for an unknown identifier (`404`), other HTTP,
+  ///   decoding, connection, and cancellation failures.
+  public func food(
+    _ id: FoodID, nutrients: NutrientNumbers? = nil
+  ) async throws(FoodDataCentralError) -> Food {
+    try await value(for: .food(id, nutrients: nutrients))
+  }
+
+  /// Sends one endpoint and decodes its body as the endpoint's response type.
+  ///
+  /// Cancellation is checked before sending. The API key is supplied only in a header.
+  /// - Parameter endpoint: A validated relative FoodData Central endpoint.
+  /// - Returns: The decoded body.
+  /// - Throws: ``FoodDataCentralError/gateway(_:response:)`` for gateway errors, or
+  ///   ``FoodDataCentralError/transport(_:)`` for HTTP, decoding, connection, and cancellation
+  ///   failures.
+  public func send<Value: Decodable & SendableMetatype>(
+    _ endpoint: Endpoint<Value>
+  ) async throws(FoodDataCentralError) -> Value {
+    guard !Task.isCancelled else { throw .transport(.cancelled) }
+    do throws(TransportError) {
+      return try await client.execute(request(for: endpoint)).value
+    } catch {
+      throw FoodDataCentralError(error)
+    }
+  }
+
+  /// Executes a reusable request without changing its response type.
+  /// - Parameter request: The portable operation to execute.
+  /// - Returns: The concrete response selected by its factory or consumer-defined endpoint.
+  /// - Throws: The same ``FoodDataCentralError`` as ``send(_:)``, including cancellation.
+  public func value<Value: Decodable & SendableMetatype>(
+    for request: FoodRequest<Value>
+  ) async throws(FoodDataCentralError) -> Value {
+    switch request.resolution {
+    case .endpoint(let endpoint):
+      return try await send(endpoint)
+    }
+  }
+
+  func request<Value>(for endpoint: Endpoint<Value>) -> Request {
+    var headers = HTTPFields()
+    headers[.accept] = "application/json"
+    headers[Self.apiKeyField] = configuration.apiKey
+    return Request(headers: headers, method: .get, path: endpoint.path)
+  }
+
+  private static let apiKeyField: HTTPField.Name = {
+    guard let name = HTTPField.Name("X-Api-Key") else {
+      preconditionFailure("X-Api-Key is a valid HTTP field name.")
+    }
+    return name
+  }()
+
+  private static let baseURL: URL = {
+    guard let url = URL(string: "https://api.nal.usda.gov/fdc/v1") else {
+      preconditionFailure("The FoodData Central API base is a valid HTTPS URL.")
+    }
+    return url
+  }()
+}
