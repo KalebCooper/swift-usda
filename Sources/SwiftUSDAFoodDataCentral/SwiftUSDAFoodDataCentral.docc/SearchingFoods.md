@@ -37,7 +37,8 @@ return the same sequences as the query-based methods.
 ### Search terms
 
 The search terms must hold something other than whitespace; `FoodSearchQuery` throws
-`FoodDataCentralValidationError.emptySearchQuery` otherwise. The terms are sent exactly as given,
+`FoodDataCentralValidationError.emptySearchQuery` otherwise. That is this package's choice: the
+service itself answers empty terms with every food, which is not a search. The terms are sent exactly as given,
 surrounding spaces included, and may use FoodData Central's search operators; see the
 [FoodData Central API guide](https://fdc.nal.usda.gov/api-guide). The SDK does not interpret or
 check them.
@@ -45,14 +46,15 @@ check them.
 ### Filters
 
 `FoodSearchQuery` accepts a set of data types, which sends no filter when empty, and a brand owner.
-The brand owner is sent exactly as given, with no validation, and applies only to Branded foods.
+The brand owner is sent exactly as given, with no validation, and applies only to Branded foods. The
+service echoes it but does not apply it strictly: a recorded Branded search for one owner also
+returned a food of another, so check `brandOwner` on each result if you need an exact match.
 
 The trade channel filter (`TradeChannel`, up to three) and the publication date range
-(`FoodPublicationDate`, a start no later than the end) come from the FoodData Central
-specification, version 1.0.1, which accepts them only in a `POST` body. They are spec-derived and
-have not been verified against the service, so a search that uses them may return foods the filter
-was meant to exclude. Version 1.0.0 of the specification, which the service still serves, does not
-list them.
+(`FoodPublicationDate`, a start no later than the end) are accepted only in a `POST` body. Recorded
+searches show the service echoes and applies both. Version 1.0.0 of the FoodData Central
+specification, which the service still serves, does not list them; the three-channel limit comes
+from version 1.0.1.
 
 ### Sort names
 
@@ -77,14 +79,17 @@ reports totals that contradict each other or the page ends the iteration with
 ``FoodDataCentralError/pagination(_:)``. The page count is not checked against the hit count and
 page size, because FoodData Central does not document how it computes it.
 
-Pages are numbered from 1. That base was recorded for the food list, where page 0 returns the same
-foods as page 1, and is assumed for search, where it has not been recorded.
+Pages are numbered from 1: the service answers page 0 with the same bytes as page 1. A start page
+past the last is answered with `currentPage` 1 and no foods, so a sequence started there ends with
+`FoodPaginationError.unexpectedPageNumber(actual:expected:)` without yielding that page.
 
 ### The result window
 
 FoodData Central refuses a food list page deep in its results with a `400` and the plain-text body
 "Bad Request: pageSize * pageNumber exceeded upper search results limit." No search refusal has
-been recorded. The same body is assumed for search, so inside ``FoodSearchPageSequence`` and
+been observed: search pages at a page number times page size of 10,002 were answered normally, and
+the search window is unknown. In case search refuses a page the same way, inside
+``FoodSearchPageSequence`` and
 ``FoodSearchItemSequence`` a `400` with exactly that text arrives as
 ``FoodDataCentralError/pagination(_:)`` with `FoodPaginationError.resultWindowExceeded`, and any
 other `400` stays ``FoodDataCentralError/transport(_:)``. A single page fetched with `value(for:)`
@@ -101,15 +106,14 @@ do {
 }
 ```
 
-### Unverified response shapes
+### Response shapes
 
-No search response has been recorded. `FoodSearchResult`, `SearchResultFood`, and
-`SearchResultFoodNutrient` follow the FoodData Central specification, version 1.0.1, which types the
-response as one object; version 1.0.0 types it as an array. Where the service is understood to
-spell a field differently from the specification, decoding accepts both spellings, the service's
-first: a nutrient's `value`, `nutrientName`, `nutrientNumber`, and `nutrientId`, or `amount`,
-`name`, and `number`; and a food's `publishedDate` or `publicationDate`. Neither spelling is
-verified against a recording, and encoding always writes the service's spelling.
+`FoodSearchResult`, `SearchResultFood`, and `SearchResultFoodNutrient` are checked against recorded
+responses. The service answers with one object, as version 1.0.1 of the specification types it;
+version 1.0.0 types it as an array. The service spells some fields differently from the
+specification, and decoding accepts both spellings, the service's first: a nutrient's `value`,
+`nutrientName`, `nutrientNumber`, and `nutrientId`, or `amount`, `name`, and `number`; and a food's
+`publishedDate` or `publicationDate`. Encoding always writes the service's spelling.
 
 The criteria the service echoes back, `FoodSearchCriteria`, are decoded leniently: an echo of
 another shape becomes `nil` instead of failing the page. Continuation never reads the echo; it
@@ -130,7 +134,7 @@ each request and again before each page or food is returned, including foods alr
 the current page, and arrives as ``FoodDataCentralError/transport(_:)`` with `cancelled`. Gateway
 refusals such as `OVER_RATE_LIMIT` arrive as ``FoodDataCentralError/gateway(_:response:)``. The
 client does not retry, wait, or track the rate limit, so a long search counts each page against the
-1,000-request hourly allowance.
+key's hourly allowance (documented as 1,000 requests).
 
 ## Topics
 

@@ -1,10 +1,11 @@
 /// The search criteria FoodData Central echoes back with a page of search results.
 ///
 /// Every field is optional and kept as the service sends it: ``sortBy`` and ``sortOrder`` stay
-/// strings so an echoed value this package does not name still decodes. The shape follows the
-/// FoodData Central specification (version 1.0.1) and has not been verified against a recorded
-/// response; fields the specification does not list are not kept. Continuation uses the query that
-/// was sent, never these echoed values.
+/// strings so an echoed value this package does not name still decodes. Recorded responses echo
+/// each filter that was sent, the page number (a requested page 0 is echoed as 1), and
+/// ``requireAllWords``; keys the type does not declare, such as the duplicate
+/// `generalSearchInput`, are not kept. Continuation uses the query that was sent, never these
+/// echoed values.
 ///
 /// ```swift
 /// let page = try JSONDecoder().decode(FoodSearchResult.self, from: body)
@@ -23,6 +24,8 @@ public struct FoodSearchCriteria: Codable, Hashable, Sendable {
   public var pageSize: Int?
   /// The search terms.
   public var query: String?
+  /// Whether every word of the query had to match; recorded responses echo `false`.
+  public var requireAllWords: Bool?
   /// The `sortBy` value, as sent on the wire.
   public var sortBy: String?
   /// The `sortOrder` value, as sent on the wire.
@@ -40,6 +43,7 @@ public struct FoodSearchCriteria: Codable, Hashable, Sendable {
   ///   - pageNumber: The page number searched.
   ///   - pageSize: The page size searched.
   ///   - query: The search terms.
+  ///   - requireAllWords: Whether every word of the query had to match.
   ///   - sortBy: The `sortBy` value.
   ///   - sortOrder: The `sortOrder` value.
   ///   - startDate: The earliest publication date.
@@ -51,6 +55,7 @@ public struct FoodSearchCriteria: Codable, Hashable, Sendable {
     pageNumber: Int? = nil,
     pageSize: Int? = nil,
     query: String? = nil,
+    requireAllWords: Bool? = nil,
     sortBy: String? = nil,
     sortOrder: String? = nil,
     startDate: String? = nil,
@@ -62,6 +67,7 @@ public struct FoodSearchCriteria: Codable, Hashable, Sendable {
     self.pageNumber = pageNumber
     self.pageSize = pageSize
     self.query = query
+    self.requireAllWords = requireAllWords
     self.sortBy = sortBy
     self.sortOrder = sortOrder
     self.startDate = startDate

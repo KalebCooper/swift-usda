@@ -17,7 +17,8 @@ extension FoodRequest where Response == FoodSearchResult {
 
 @Suite(.timeLimit(.minutes(suiteTimeLimitMinutes)))
 struct FoodSearchTests {
-  // A page shaped like the specification's `SearchResult`, with a key it does not list.
+  // A page in the specification's spelling (`amount`, `name`, `number`, `publicationDate`), which
+  // no recorded response uses, with a key it does not list.
   private static let pageBody = Data(
     #"""
     {
@@ -365,10 +366,11 @@ struct FoodSearchTests {
 
   @Test("A search with no hits is one empty page")
   func aSearchWithNoHitsIsOneEmptyPage() throws {
-    let query = try FoodSearchQuery("zzzzqqqq")
-    let page = try JSONDecoder().decode(
-      FoodSearchResult.self,
-      from: Data(#"{"totalHits":0,"currentPage":1,"totalPages":0,"foods":[]}"#.utf8))
+    let query = try FoodSearchQuery("zzqxvjwkplm", pageSize: 2)
+    let page = try Self.recorded(.searchNoHits)
+    #expect(page.totalHits == 0)
+    #expect(page.totalPages == 0)
+    #expect(page.foods.isEmpty)
     #expect(try query.next(after: page) == nil)
   }
 
@@ -405,6 +407,111 @@ struct FoodSearchTests {
     let query = try FoodSearchQuery("apple", pageSize: 2)
     let next = try query.next(after: Self.page(current: 1, foods: 2, hits: 2, pages: 5))
     #expect(next?.pageNumber == 2)
+  }
+
+  @Test("A recorded page decodes its totals, echoed criteria, foods, and nutrients")
+  func aRecordedPageDecodesItsTotalsEchoedCriteriaFoodsAndNutrients() throws {
+    let page = try Self.recorded(.searchCheddarPage1)
+    #expect(page.totalHits == 60_863)
+    #expect(page.currentPage == 1)
+    #expect(page.totalPages == 30_432)
+    #expect(
+      page.foodSearchCriteria
+        == FoodSearchCriteria(
+          pageNumber: 1, pageSize: 2, query: "cheddar cheese", requireAllWords: false))
+    #expect(page.foods.map(\.fdcID) == [2_095_236, 2_057_648])
+    var first = try #require(page.foods.first)
+    #expect(first.foodNutrients?.count == 10)
+    #expect(
+      first.foodNutrients?.first
+        == SearchResultFoodNutrient(
+          amount: 25, derivationCode: "LCCS",
+          derivationDescription: "Calculated from value per serving size measure",
+          name: "Protein", nutrientID: 1003, number: "203", unitName: "G"))
+    first.foodNutrients = nil
+    #expect(
+      first
+        == SearchResultFood(
+          allHighlightFields:
+            "<b>Ingredients</b>: MILK, <em>CHEESE</em> CULTURES, SALT, ENZYMES AND ANNATTO COLOR "
+            + "IF NECESSARY.",
+          brandName: "AMISH CLASSICS", brandOwner: "MDS Foods Inc.", dataType: .branded,
+          description: "CHEDDAR CHEESE", fdcID: 2_095_236, foodCategory: "Cheese",
+          gtinUpc: "828653282457", householdServingFullText: "1 ONZ",
+          ingredients: "MILK, CHEESE CULTURES, SALT, ENZYMES AND ANNATTO COLOR IF NECESSARY.",
+          publicationDate: "2021-10-28", score: 773.74554, servingSize: 28, servingSizeUnit: "g",
+          tradeChannels: [TradeChannel(rawValue: "NO_TRADE_CHANNEL")]))
+  }
+
+  @Test("A recorded Foundation and SR Legacy page keeps integer NDB numbers as strings")
+  func aRecordedFoundationAndSRLegacyPageKeepsIntegerNDBNumbersAsStrings() throws {
+    let page = try Self.recorded(.searchDataTypes)
+    #expect(page.foods.map(\.dataType) == [.foundation, .srLegacy])
+    #expect(page.foods.map(\.ndbNumber) == ["1009", "43278"])
+    #expect(page.foods.map(\.publicationDate) == ["2019-04-01", "2019-04-01"])
+  }
+
+  @Test(
+    "A recorded search echoes the filters its query sends", arguments: RecordedSearch.allCases)
+  func aRecordedSearchEchoesTheFiltersItsQuerySends(_ search: RecordedSearch) throws {
+    let query = try search.query()
+    #expect(Endpoint.foodSearch(query).body == Data(search.requestBody.utf8))
+    let page = try Self.recorded(search.fixture)
+    #expect(page.foodSearchCriteria == (try search.criteria()))
+    #expect(page.foods.count == 2)
+    #expect(try query.next(after: page)?.pageNumber == 2)
+    #expect(page.foods.allSatisfy(search.matches))
+  }
+
+  @Test("A recorded page 0 is byte for byte page 1")
+  func aRecordedPage0IsByteForBytePage1() throws {
+    #expect(try Fixture.searchCheddarPage0.data() == Fixture.searchCheddarPage1.data())
+    #expect(try Self.recorded(.searchCheddarPage0).foodSearchCriteria?.pageNumber == 1)
+  }
+
+  @Test("Recorded consecutive pages continue from one to the next")
+  func recordedConsecutivePagesContinueFromOneToTheNext() throws {
+    let first = try FoodSearchQuery("cheddar cheese", pageSize: 2)
+    let second = try #require(try first.next(after: try Self.recorded(.searchCheddarPage1)))
+    #expect(second.pageNumber == 2)
+    let page = try Self.recorded(.searchCheddarPage2)
+    #expect(page.currentPage == 2)
+    #expect(page.foods.map(\.fdcID) == [2_021_597, 2_116_771])
+    #expect(try second.next(after: page)?.pageNumber == 3)
+  }
+
+  @Test("A recorded page beyond ten thousand results is answered and continues")
+  func aRecordedPageBeyondTenThousandResultsIsAnsweredAndContinues() throws {
+    let query = try FoodSearchQuery("cheese", pageNumber: 5_001, pageSize: 2)
+    let page = try Self.recorded(.searchPastResultWindow)
+    #expect(page.currentPage == 5_001)
+    #expect(page.foods.count == 2)
+    #expect(try query.next(after: page)?.pageNumber == 5_002)
+  }
+
+  @Test("A recorded page past the last reports page one and is rejected")
+  func aRecordedPagePastTheLastReportsPageOneAndIsRejected() throws {
+    let query = try FoodSearchQuery("cheddar cheese", pageNumber: 30_441, pageSize: 2)
+    let page = try Self.recorded(.searchBeyondTotalHits)
+    #expect(page.currentPage == 1)
+    #expect(page.totalPages == 30_432)
+    #expect(page.foods.isEmpty)
+    #expect(throws: FoodPaginationError.unexpectedPageNumber(actual: 1, expected: 30_441)) {
+      try query.next(after: page)
+    }
+  }
+
+  @Test(
+    "A recorded page survives an encode and decode round trip",
+    arguments: [
+      Fixture.searchBrandedBrandOwner, .searchCheddarPage1, .searchDataTypes, .searchDateRange,
+      .searchNoHits, .searchSortFDCIDDescending, .searchTradeChannel,
+    ])
+  func aRecordedPageSurvivesAnEncodeAndDecodeRoundTrip(_ fixture: Fixture) throws {
+    let page = try Self.recorded(fixture)
+    let again = try JSONDecoder().decode(
+      FoodSearchResult.self, from: try JSONEncoder().encode(page))
+    #expect(again == page)
   }
 
   @Test("A contextual factory resolves to the search query")
@@ -469,5 +576,104 @@ struct FoodSearchTests {
       currentPage: current,
       foods: (0..<foods).map { SearchResultFood(description: "Food \($0)", fdcID: FoodID($0 + 1)) },
       totalHits: hits, totalPages: pages)
+  }
+
+  private static func recorded(_ fixture: Fixture) throws -> FoodSearchResult {
+    try JSONDecoder().decode(FoodSearchResult.self, from: fixture.data())
+  }
+}
+
+/// A recorded search, the query that sends its body, and what its response echoes.
+enum RecordedSearch: CaseIterable, Sendable {
+  case brandOwner
+  case dataTypes
+  case dateRange
+  case sort
+  case tradeChannel
+
+  var fixture: Fixture {
+    switch self {
+    case .brandOwner: .searchBrandedBrandOwner
+    case .dataTypes: .searchDataTypes
+    case .dateRange: .searchDateRange
+    case .sort: .searchSortFDCIDDescending
+    case .tradeChannel: .searchTradeChannel
+    }
+  }
+
+  // The body the recording sent, which the matching query must encode byte for byte.
+  var requestBody: String {
+    switch self {
+    case .brandOwner:
+      #"{"brandOwner":"MDS Foods Inc.","dataType":["Branded"],"pageNumber":1,"pageSize":2,"#
+        + #""query":"cheddar cheese"}"#
+    case .dataTypes:
+      #"{"dataType":["Foundation","SR Legacy"],"pageNumber":1,"pageSize":2,"#
+        + #""query":"cheddar cheese"}"#
+    case .dateRange:
+      #"{"endDate":"2021-12-31","pageNumber":1,"pageSize":2,"query":"cheddar cheese","#
+        + #""startDate":"2021-01-01"}"#
+    case .sort:
+      #"{"pageNumber":1,"pageSize":2,"query":"cheddar cheese","sortBy":"fdcId","sortOrder":"desc"}"#
+    case .tradeChannel:
+      #"{"pageNumber":1,"pageSize":2,"query":"cheddar cheese","tradeChannel":["GROCERY"]}"#
+    }
+  }
+
+  func query() throws -> FoodSearchQuery {
+    switch self {
+    case .brandOwner:
+      try FoodSearchQuery(
+        "cheddar cheese", brandOwner: "MDS Foods Inc.", dataTypes: [.branded], pageSize: 2)
+    case .dataTypes:
+      try FoodSearchQuery("cheddar cheese", dataTypes: [.foundation, .srLegacy], pageSize: 2)
+    case .dateRange:
+      try FoodSearchQuery(
+        "cheddar cheese", endDate: FoodPublicationDate(year: 2021, month: 12, day: 31),
+        pageSize: 2, startDate: FoodPublicationDate(year: 2021, month: 1, day: 1))
+    case .sort:
+      try FoodSearchQuery(
+        "cheddar cheese", pageSize: 2, sort: FoodSort(field: .fdcID, order: .descending))
+    case .tradeChannel:
+      try FoodSearchQuery("cheddar cheese", pageSize: 2, tradeChannels: [.grocery])
+    }
+  }
+
+  func criteria() throws -> FoodSearchCriteria {
+    switch self {
+    case .brandOwner:
+      FoodSearchCriteria(
+        brandOwner: "MDS Foods Inc.", dataType: [.branded], pageNumber: 1, pageSize: 2,
+        query: "cheddar cheese", requireAllWords: false)
+    case .dataTypes:
+      FoodSearchCriteria(
+        dataType: [.foundation, .srLegacy], pageNumber: 1, pageSize: 2, query: "cheddar cheese",
+        requireAllWords: false)
+    case .dateRange:
+      FoodSearchCriteria(
+        endDate: "2021-12-31", pageNumber: 1, pageSize: 2, query: "cheddar cheese",
+        requireAllWords: false, startDate: "2021-01-01")
+    case .sort:
+      FoodSearchCriteria(
+        pageNumber: 1, pageSize: 2, query: "cheddar cheese", requireAllWords: false,
+        sortBy: "fdcId", sortOrder: "desc")
+    case .tradeChannel:
+      FoodSearchCriteria(
+        pageNumber: 1, pageSize: 2, query: "cheddar cheese", requireAllWords: false,
+        tradeChannel: [.grocery])
+    }
+  }
+
+  // Whether a returned food is consistent with the filter. A brand owner is echoed but not
+  // applied strictly: the recorded page includes a food of another owner, so only the data type
+  // is checked.
+  func matches(_ food: SearchResultFood) -> Bool {
+    switch self {
+    case .brandOwner: food.dataType == .branded
+    case .dataTypes: food.dataType == .foundation || food.dataType == .srLegacy
+    case .dateRange: food.publicationDate?.hasPrefix("2021-") == true
+    case .sort: true
+    case .tradeChannel: food.tradeChannels?.contains(.grocery) == true
+    }
   }
 }

@@ -1,8 +1,9 @@
 /// One to 25 distinct nutrient numbers, in the order given, for the `nutrients` filter.
 ///
-/// The FoodData Central specification limits a food lookup to 25 nutrient numbers. No response
-/// to a request with a `nutrients` filter has been recorded, so the limit, and what the service
-/// returns for a food with none of the requested nutrients, are unverified. The numbers are sent
+/// The FoodData Central specification limits a food lookup to 25 nutrient numbers. Recorded
+/// lookups confirm the filter keeps only the nutrients whose legacy numbers it lists, but the limit,
+/// and what the service returns for a food with none of the requested nutrients, have not been
+/// recorded. The numbers are sent
 /// in the order given; nothing is sorted, removed, or split across requests.
 ///
 /// ```swift

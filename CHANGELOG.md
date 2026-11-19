@@ -35,8 +35,8 @@ All notable changes are documented here, following
 - Multiple-food lookup for `GET /foods`: `FoodIDs` (one to 20 distinct identifiers),
   `Endpoint.foods(_:nutrients:)` and `Endpoint.abridgedFoods(_:nutrients:)`,
   `FoodRequest.foods(_:nutrients:)` and `FoodRequest.abridgedFoods(_:nutrients:)`, and the client
-  methods `foods(_:nutrients:)` and `abridgedFoods(_:nutrients:)`. The specification says unknown
-  identifiers are omitted; the service's result order is undocumented.
+  methods `foods(_:nutrients:)` and `abridgedFoods(_:nutrients:)`. Unknown identifiers are
+  omitted; the service's result order is undocumented and need not match the request.
 - `FoodDataCentralValidationError.duplicateFoodID` and `.foodIDCount`.
 - `FoodRequest.Resolution` cases `foodList(FoodListQuery)` and `foodSearch(FoodSearchQuery)`, and a
   `value(for:)` overload for `FoodRequest<FoodListPage>`.
@@ -52,8 +52,8 @@ All notable changes are documented here, following
   whose length is a multiple of the page size ends with one empty page. Pages are not a snapshot.
 - `FoodListQuery.next(after:)` and `FoodPaginationError`, which report both food list and food
   search failures: a page that does not answer its query, a page holding more foods than its size, a page number that overflows, and a
-  page past FoodData Central's undocumented result window (observed at a page number times page
-  size of 200,000). The sequences recognize the window from the service's exact response text;
+  page past FoodData Central's undocumented result window (on the food list, a page number times
+  page size above 100,000). The sequences recognize the window from the service's exact response text;
   single-page calls report it as `FoodDataCentralError.transport`.
 - `FoodDataType.experimental`, a data type the service accepts as a filter but its specification
   omits.
@@ -62,14 +62,15 @@ All notable changes are documented here, following
   Central's search operators, data types, a brand owner sent exactly as given that applies only to
   Branded foods, an optional `FoodSort`, a one-based page number, and a page size of 1 to 200),
   `Endpoint.foodSearch(_:)`, and `FoodRequest.foodSearch(_:)`. Every parameter travels in a JSON body
-  encoded with sorted keys. One-based paging is assumed from the food list and not recorded for
-  search.
+  encoded with sorted keys. Pages are numbered from 1, as recorded for search. Empty or
+  whitespace-only terms are rejected before sending, although the service answers them with every
+  food.
 - `TradeChannel` and `FoodPublicationDate` for the trade channel filter (up to three) and the
-  publication date range, which the specification (version 1.0.1) accepts only in a `POST` body.
-  Both are spec-derived and unverified against the service.
+  publication date range, which the service accepts only in a `POST` body and applies, as recorded.
 - `FoodSearchResult`, `FoodSearchCriteria`, `SearchResultFood`, and `SearchResultFoodNutrient`,
-  shaped after the specification (version 1.0.1). No search response has been recorded, so these
-  shapes are unverified. Nutrients decode from `value`, `nutrientName`, `nutrientNumber`, and
+  checked against recorded search responses. `SearchResultFood` carries `brandName`,
+  `foodCategory`, `householdServingFullText`, `servingSize`, `servingSizeUnit`, and
+  `tradeChannels`, and `FoodSearchCriteria` carries `requireAllWords`. Nutrients decode from `value`, `nutrientName`, `nutrientNumber`, and
   `nutrientId` or from `amount`, `name`, and `number`, and a food's publication date from
   `publishedDate` or `publicationDate`, the first spelling of each preferred; encoding writes the
   first spelling. A malformed `foodSearchCriteria` echo decodes as `nil` and never fails the page.
@@ -78,8 +79,13 @@ All notable changes are documented here, following
   contradictory totals.
 - Lazy search reads: `FoodDataCentralClient.foodSearchPages(_:)` and `foods(matching:)`, and for a
   search request `pages(for:)` and `items(for:)`, returning `FoodSearchPageSequence` and
-  `FoodSearchItemSequence`. The result window refusal recorded for the food list is assumed for
-  search and reported as `FoodPaginationError.resultWindowExceeded`.
+  `FoodSearchItemSequence`. No search result window refusal has been observed; the sequences
+  recognize the food list's refusal text as `FoodPaginationError.resultWindowExceeded` in case
+  search sends it. A start page past the last fails with
+  `FoodPaginationError.unexpectedPageNumber(actual:expected:)`, because the service answers it as
+  page 1.
+- `Endpoint.decode(_:)`, which decodes a response body the way the SDK does, for consumers using
+  their own networking stack.
 - `EndpointMethod`, with `Endpoint.method` and `Endpoint.body` for endpoints that post a JSON body.
 - `FoodDataCentralValidationError.emptySearchQuery`, `.publicationDate(year:month:day:)`,
   `.publicationDateRange(start:end:)`, and `.tradeChannelCount(_:)`.
@@ -88,3 +94,10 @@ All notable changes are documented here, following
   foods.
 - A SwiftUI demo app, `Examples/SwiftUSDAFoodDataCentralDemo`, that searches foods, loads more
   results a page at a time, and shows the full record for a food.
+
+### Fixed
+
+- A multiple-food lookup that matches no known identifier returns an empty array. The service
+  answers it with `{}` rather than `[]`, which previously failed to decode. Endpoints from
+  `Endpoint.foods(_:nutrients:)` and `Endpoint.abridgedFoods(_:nutrients:)` now compare unequal to
+  endpoints created from the same path, because only they decode `{}` as no foods.

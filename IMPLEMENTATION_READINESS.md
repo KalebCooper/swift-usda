@@ -26,13 +26,11 @@ The hosted lanes are configured and have not run. Nothing has been pushed.
 
 ## Pending recordings
 
-Follow-up before the first release. The documentation marks each of these as following the specification or as unrecorded, and each recording lets the matching caveat in the README and DocC be removed or confirmed:
+Follow-up before the first release. The documentation marks each of these as unrecorded, and each recording lets the matching caveat in the README and DocC be removed or confirmed:
 
-- The `nutrients` filter on a food lookup: the 25-number limit, whether nutrient numbers or nutrient IDs match, and the result for a food with none of the requested nutrients.
-- `GET /foods` with several identifiers, including omitted unknown identifiers and result order.
-- The `404` and `400` bodies on `/food/{id}`.
-- Every `/foods/search` response, including the trade channel and publication date filters, one-based paging, and the result window refusal.
-- The list window-boundary probes: the exact page number times page size at which `/foods/list` refuses a page.
+- The `nutrients` filter's 25-number limit, and the result for a food with none of the requested nutrients.
+- The `/foods/search` result window: no search page has been refused at the depths recorded, and the search sequences recognize the list's refusal text without a search recording of it.
+- The 20-identifier limit on `/foods` as the service enforces it: a request with 21 unknown identifiers was answered with `{}`, so a probe needs known identifiers.
 
 ## Pending hosted gates
 

@@ -1,13 +1,12 @@
 /// One nutrient amount in a food search result.
 ///
-/// Two spellings of these fields exist and neither has been verified against a recorded response.
-/// The FoodData Central specification (version 1.0.1) lists `amount`, `name`, and `number`; the
-/// service is understood to send `value`, `nutrientName`, `nutrientNumber`, and `nutrientId`
-/// instead. Decoding accepts both, reading the service's spelling first and the specification's
-/// second, so a nutrient that carries both keeps the service's values. Encoding always writes the
-/// service's spelling (`value`, `nutrientName`, `nutrientNumber`, `nutrientId`), so a decoded
-/// nutrient survives a round trip unchanged. Every field is optional, and keys neither spelling
-/// names are not kept.
+/// Two spellings of these fields exist. Recorded search responses use `value`, `nutrientName`,
+/// `nutrientNumber`, and `nutrientId`; the FoodData Central specification (version 1.0.1) lists
+/// `amount`, `name`, and `number`. Decoding accepts both, reading the service's spelling first and
+/// the specification's second, so a nutrient that carries both keeps the service's values.
+/// Encoding always writes the service's spelling (`value`, `nutrientName`, `nutrientNumber`,
+/// `nutrientId`), so a decoded nutrient survives a round trip unchanged. Every field is optional,
+/// and keys neither spelling names, such as `rank` or the nutrient source, are not kept.
 ///
 /// ```swift
 /// let protein = food.foodNutrients?.first { $0.number == "203" }

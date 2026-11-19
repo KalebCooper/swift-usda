@@ -1,10 +1,10 @@
 /// One page of food search results, with the totals FoodData Central reports for the search.
 ///
-/// The shape follows the FoodData Central specification (version 1.0.1), which types the
-/// `/foods/search` response as one object; version 1.0.0 types it as an array. It has not been
-/// verified against a recorded response. The specification marks no field as required; this type
-/// requires the page number, both totals, and the foods, because continuing a search depends on
-/// them. The echoed ``foodSearchCriteria`` is decoded leniently: an echo of another shape becomes
+/// The service answers `/foods/search` with one object, as the FoodData Central specification
+/// (version 1.0.1) types it; version 1.0.0 types it as an array. The specification marks no field
+/// as required; this type requires the page number, both totals, and the foods, because
+/// continuing a search depends on them. The response's `aggregations` and `pageList` keys are not
+/// kept. The echoed ``foodSearchCriteria`` is decoded leniently: an echo of another shape becomes
 /// `nil` rather than failing the page, because continuation never reads it. Pass a page to
 /// ``FoodSearchQuery/next(after:)`` to describe the following page.
 ///

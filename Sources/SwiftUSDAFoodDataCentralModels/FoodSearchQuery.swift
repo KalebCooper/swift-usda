@@ -11,12 +11,12 @@ import Foundation
 /// including the page number and size. Data types and trade channels are sent as arrays in
 /// raw-value order; an empty set sends no filter. Creating a query performs no I/O.
 ///
-/// Pages are numbered from 1. That base was established for the food list, where page 0 returns
-/// the same foods as page 1; it is assumed for search and has not been recorded there.
+/// Pages are numbered from 1: the service answers page 0 with the same bytes as page 1. The
+/// service itself answers empty query text with every food; rejecting text that is empty or only
+/// whitespace is this package's choice, so a search always names something to match.
 /// ``brandOwner`` is sent exactly as given, with no validation, and applies only to Branded foods.
-/// The ``tradeChannels``, ``startDate``, and
-/// ``endDate`` filters come from the FoodData Central specification (version 1.0.1), which accepts
-/// them only in the request body; they have not been verified against the service.
+/// The ``tradeChannels``, ``startDate``, and ``endDate`` filters are accepted only in the request
+/// body; recorded searches confirm the service applies them.
 ///
 /// ```swift
 /// let query = try FoodSearchQuery("cheddar cheese", dataTypes: [.branded], pageSize: 25)
@@ -26,12 +26,15 @@ import Foundation
 public struct FoodSearchQuery: Hashable, Sendable {
   /// The largest page size FoodData Central accepts.
   public static let maximumPageSize = 200
-  /// The most trade channels one search can filter on, per the specification.
+  /// The most trade channels one search can filter on, per the specification; the service's own
+  /// limit has not been recorded.
   public static let maximumTradeChannelCount = 3
 
   /// The brand owner to filter Branded foods by, or `nil` for no brand owner filter.
   ///
-  /// It is sent exactly as given, with no validation, and applies only to Branded foods.
+  /// It is sent exactly as given, with no validation, and applies only to Branded foods. The
+  /// service echoes it but does not apply it strictly: a recorded search for one owner also
+  /// returned a food of another.
   public let brandOwner: String?
   /// The data types to search, or an empty set for every data type.
   public let dataTypes: Set<FoodDataType>

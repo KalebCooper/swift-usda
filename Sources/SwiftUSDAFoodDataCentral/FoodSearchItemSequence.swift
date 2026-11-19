@@ -8,10 +8,13 @@ import SwiftUSDAFoodDataCentralModels
 /// iterator is created, and breaking out of iteration sends nothing more. Foods yielded before a
 /// failure are not a complete set of results.
 ///
-/// A page past the service's result window ends the sequence with
+/// A page the service refuses as past its result window ends the sequence with
 /// `FoodPaginationError.resultWindowExceeded`. The refusal recognized is the plain-text `400`
-/// body observed on the food list; the same body is assumed for search, where it has not been
-/// recorded.
+/// body the food list sends. No search refusal has been observed (search pages at a page number
+/// times page size of 10,002 were answered normally), so the search window is unknown.
+///
+/// A start page past the last answers with page 1 and no foods; that page is not yielded, and the
+/// sequence fails with `FoodPaginationError.unexpectedPageNumber(actual:expected:)`.
 ///
 /// ```swift
 /// let query = try FoodSearchQuery("cheddar cheese", dataTypes: [.branded], pageSize: 200)

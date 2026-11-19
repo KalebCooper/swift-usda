@@ -196,6 +196,42 @@ struct FoodDataCentralClientTests {
     #expect(transport.requests.count == 1)
   }
 
+  @Test("A recorded unknown identifier is a not-found status with its empty body")
+  func aRecordedUnknownIdentifierIsANotFoundStatusWithItsEmptyBody() async throws {
+    let body = try Fixture.foodNotFound.data()
+    let transport = MockTransport(results: [
+      .success(.text(String(decoding: body, as: UTF8.self), status: .notFound))
+    ])
+    do {
+      _ = try await makeClient(transport).food(999_999_999)
+      Issue.record("An unknown identifier must fail.")
+    } catch {
+      guard case .transport(.httpStatus(let received, let status, _)) = error else {
+        Issue.record("Expected the original HTTP failure, received \(error).")
+        return
+      }
+      #expect(status == 404)
+      #expect(received.isEmpty)
+    }
+  }
+
+  @Test("A recorded rejected identifier is a bad-request status, not a gateway error")
+  func aRecordedRejectedIdentifierIsABadRequestStatusNotAGatewayError() async throws {
+    let body = try Fixture.foodInvalidID.data()
+    let transport = MockTransport(results: [.success(.json(body, status: .badRequest))])
+    do {
+      _ = try await makeClient(transport).abridgedFood(1)
+      Issue.record("A rejected identifier must fail.")
+    } catch {
+      guard case .transport(.httpStatus(let received, let status, _)) = error else {
+        Issue.record("Expected the original HTTP failure, received \(error).")
+        return
+      }
+      #expect(status == 400)
+      #expect(received == body)
+    }
+  }
+
   @Test("Unrecognized HTTP bodies remain inspectable", arguments: [400, 403, 404, 429, 500])
   func unrecognizedHTTPBodiesRemainInspectable(_ status: Int) async throws {
     let body = Data("<html>Unavailable</html>".utf8)

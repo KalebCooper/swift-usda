@@ -387,6 +387,26 @@ struct FoodListSequenceTests {
       ])
   }
 
+  @Test("Recorded pages end at the result window just past one hundred thousand foods")
+  func recordedPagesEndAtTheResultWindowJustPastOneHundredThousandFoods() async throws {
+    let transport = MockTransport(results: [
+      .success(.ok(json: try Fixture.listWindow50000.data())),
+      .success(.json(try Fixture.listWindow50001.data(), status: .badRequest)),
+    ])
+    let client = try makeClient(transport)
+    let query = try FoodListQuery(dataTypes: [.branded], pageNumber: 50_000, pageSize: 2)
+    var pages = client.foodListPages(query).makeAsyncIterator()
+    #expect(try await pages.next()?.foods.count == 2)
+    let error = await Self.failure(of: &pages)
+    #expect(Self.pagination(error) == .resultWindowExceeded)
+    #expect(try await pages.next() == nil)
+    #expect(
+      transport.requests.compactMap(\.request.path) == [
+        "/fdc/v1/foods/list?dataType=Branded&pageNumber=50000&pageSize=2",
+        "/fdc/v1/foods/list?dataType=Branded&pageNumber=50001&pageSize=2",
+      ])
+  }
+
   @Test("Any other rejected page stays a transport failure", arguments: OtherRejection.allCases)
   func anyOtherRejectedPageStaysATransportFailure(_ rejection: OtherRejection) async throws {
     let transport = MockTransport(results: [.success(try rejection.response())])

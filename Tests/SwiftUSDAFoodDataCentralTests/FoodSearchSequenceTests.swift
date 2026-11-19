@@ -7,8 +7,8 @@ import SwiftUSDAFoodDataCentralModels
 import SwiftUSDAFoodDataCentralTestSupport
 import Testing
 
-// No search response has been recorded, so these bodies are literals in the shape of the
-// FoodData Central specification, version 1.0.1.
+// Bodies built by `page(_:of:hits:ids:)` share the recorded envelope with minimal foods, so a test
+// can state its totals directly; recorded pages are read from `Fixture`.
 @Suite("FoodData Central food search sequences", .timeLimit(.minutes(suiteTimeLimitMinutes)))
 struct FoodSearchSequenceTests {
   @Test("Creating search sequences and iterators sends nothing")
@@ -110,12 +110,12 @@ struct FoodSearchSequenceTests {
 
   @Test("A search that matches nothing yields one empty page and ends")
   func aSearchThatMatchesNothingYieldsOneEmptyPageAndEnds() async throws {
-    let empty = Self.page(1, of: 0, hits: 0, ids: [])
+    let empty = try Fixture.searchNoHits.data()
     let transport = MockTransport(results: [
       .success(.ok(json: empty)), .success(.ok(json: empty)),
     ])
     let client = try makeClient(transport)
-    let query = try FoodSearchQuery("zzzz", pageSize: 2)
+    let query = try FoodSearchQuery("zzqxvjwkplm", pageSize: 2)
     var pages = client.foodSearchPages(query).makeAsyncIterator()
     let only = try #require(try await pages.next())
     #expect(only.foods.isEmpty)
@@ -125,6 +125,40 @@ struct FoodSearchSequenceTests {
     #expect(try await items.next() == nil)
     #expect(try await items.next() == nil)
     #expect(transport.requests.count == 2)
+  }
+
+  @Test("Recorded pages are posted with the recorded bodies and continue in order")
+  func recordedPagesArePostedWithTheRecordedBodiesAndContinueInOrder() async throws {
+    let transport = MockTransport(results: [
+      .success(.ok(json: try Fixture.searchCheddarPage1.data())),
+      .success(.ok(json: try Fixture.searchCheddarPage2.data())),
+    ])
+    let client = try makeClient(transport)
+    var foods = client.foods(matching: try FoodSearchQuery("cheddar cheese", pageSize: 2))
+      .makeAsyncIterator()
+    var ids: [FoodID] = []
+    for _ in 0..<4 {
+      ids.append(try #require(try await foods.next()).fdcID)
+    }
+    #expect(ids == [2_095_236, 2_057_648, 2_021_597, 2_116_771])
+    let expected: [TransportBody] = [1, 2].map { number in
+      .bytes(Data(#"{"pageNumber":\#(number),"pageSize":2,"query":"cheddar cheese"}"#.utf8))
+    }
+    #expect(transport.requests.map(\.body) == expected)
+  }
+
+  @Test("A recorded start page past the last fails without being yielded")
+  func aRecordedStartPagePastTheLastFailsWithoutBeingYielded() async throws {
+    let transport = MockTransport(results: [
+      .success(.ok(json: try Fixture.searchBeyondTotalHits.data()))
+    ])
+    let client = try makeClient(transport)
+    let query = try FoodSearchQuery("cheddar cheese", pageNumber: 30_441, pageSize: 2)
+    var pages = client.foodSearchPages(query).makeAsyncIterator()
+    let error = await Self.failure(of: &pages)
+    #expect(Self.pagination(error) == .unexpectedPageNumber(actual: 1, expected: 30_441))
+    #expect(try await pages.next() == nil)
+    #expect(transport.requests.count == 1)
   }
 
   @Test("Two search iterators over one sequence traverse independently from the first page")
@@ -439,8 +473,8 @@ struct FoodSearchSequenceTests {
     #expect(transport.requests.count == 2)
   }
 
-  // The refusal body is the one observed on the food list; no search refusal has been recorded,
-  // so the same body is assumed for search.
+  // The refusal body is the one the food list sends. Search has not been observed refusing a page,
+  // so this proves only that the sequences would recognize the same body.
   @Test("The service's result window refusal ends both search sequences with a pagination error")
   func theServicesResultWindowRefusalEndsBothSearchSequencesWithAPaginationError() async throws {
     let refusal = Response.json(try Fixture.listBeyondEnd.data(), status: .badRequest)

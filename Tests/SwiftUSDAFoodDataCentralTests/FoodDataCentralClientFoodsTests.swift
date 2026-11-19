@@ -11,32 +11,31 @@ import Testing
 struct FoodDataCentralClientFoodsTests {
   @Test("All full multiple-food entry points send equivalent authenticated requests")
   func allFullMultipleFoodEntryPointsSendEquivalentAuthenticatedRequests() async throws {
-    let body = try recordedArray(.foodSRLegacyFull, .foodSurveyFull, .foodFoundationFull)
+    let body = try Fixture.foodsMixedInvalid.data()
     let transport = MockTransport(results: Array(repeating: .success(.ok(json: body)), count: 3))
     let client = try makeClient(transport)
-    let ids = try FoodIDs([167_782, 2_706_337, 1, 2_768_188])
-    let nutrients = try NutrientNumbers([203, 204, 205])
-    let everyday = try await client.foods(ids, nutrients: nutrients)
-    let reusable = try await client.value(for: .foods(ids, nutrients: nutrients))
-    let endpoint = try await client.send(.foods(ids, nutrients: nutrients))
+    let ids = try FoodIDs([2_617_100, 2_768_188, 167_782, 2_706_337, 999_999_999])
+    let everyday = try await client.foods(ids)
+    let reusable = try await client.value(for: .foods(ids))
+    let endpoint = try await client.send(.foods(ids))
     #expect(everyday == reusable)
     #expect(reusable == endpoint)
-    #expect(everyday.count == 3)
-    guard case .srLegacy(let first) = everyday.first, case .foundation(let last) = everyday.last
+    #expect(everyday.count == 4)
+    guard case .branded(let first) = everyday.first, case .survey(let last) = everyday.last
     else {
-      Issue.record("Expected SR Legacy first and Foundation last, got \(everyday)")
+      Issue.record("Expected Branded first and Survey last, got \(everyday)")
       return
     }
-    #expect(first.description == "Abiyuch, raw")
-    #expect(last.description == "Alaska Pollock, raw")
+    #expect(first.fdcID == 2_617_100)
+    #expect(last.description == "Abalone")
     try expectAuthenticatedRequests(
       transport,
-      path: "/fdc/v1/foods?fdcIds=167782,2706337,1,2768188&format=full&nutrients=203,204,205")
+      path: "/fdc/v1/foods?fdcIds=2617100,2768188,167782,2706337,999999999&format=full")
   }
 
   @Test("All abridged multiple-food entry points send equivalent authenticated requests")
   func allAbridgedMultipleFoodEntryPointsSendEquivalentAuthenticatedRequests() async throws {
-    let body = try recordedArray(.foodBrandedAbridged, .foodFoundationAbridged)
+    let body = try Fixture.foodsAbridged.data()
     let transport = MockTransport(results: Array(repeating: .success(.ok(json: body)), count: 3))
     let client = try makeClient(transport)
     let ids = try FoodIDs([2_617_100, 2_768_188])
@@ -45,7 +44,7 @@ struct FoodDataCentralClientFoodsTests {
     let endpoint = try await client.send(.abridgedFoods(ids))
     #expect(everyday == reusable)
     #expect(reusable == endpoint)
-    #expect(everyday.map(\.fdcID) == [2_617_100, 2_768_188])
+    #expect(everyday.map(\.fdcID) == [2_768_188, 2_617_100])
     try expectAuthenticatedRequests(
       transport, path: "/fdc/v1/foods?fdcIds=2617100,2768188&format=abridged")
   }
@@ -60,6 +59,39 @@ struct FoodDataCentralClientFoodsTests {
     #expect(try await client.foods(ids).isEmpty)
     #expect(try await client.abridgedFoods(ids).isEmpty)
     #expect(transport.requests.count == 2)
+  }
+
+  @Test("A recorded empty object returns no foods from every entry point")
+  func aRecordedEmptyObjectReturnsNoFoodsFromEveryEntryPoint() async throws {
+    let body = try Fixture.foodsAllInvalid.data()
+    let transport = MockTransport(results: Array(repeating: .success(.ok(json: body)), count: 4))
+    let client = try makeClient(transport)
+    let ids = try FoodIDs([999_999_998, 999_999_999])
+    #expect(try await client.foods(ids).isEmpty)
+    #expect(try await client.abridgedFoods(ids).isEmpty)
+    #expect(try await client.value(for: .foods(ids)).isEmpty)
+    #expect(try await client.send(.abridgedFoods(ids)).isEmpty)
+    #expect(transport.requests.count == 4)
+  }
+
+  @Test("A non-empty object fails as a decoding failure", arguments: [false, true])
+  func aNonEmptyObjectFailsAsADecodingFailure(_ abridged: Bool) async throws {
+    let transport = MockTransport(results: [.success(.ok(json: Data(#"{"a":1}"#.utf8)))])
+    let client = try makeClient(transport)
+    let ids = try FoodIDs([167_782])
+    do throws(FoodDataCentralError) {
+      if abridged {
+        _ = try await client.abridgedFoods(ids)
+      } else {
+        _ = try await client.foods(ids)
+      }
+      Issue.record("A non-empty object must fail to decode.")
+    } catch {
+      guard case .transport(.decode) = error else {
+        Issue.record("Expected a typed decoding failure, received \(error).")
+        return
+      }
+    }
   }
 
   @Test("An identifier count outside one to twenty fails before any request", arguments: [0, 21])
@@ -92,9 +124,9 @@ struct FoodDataCentralClientFoodsTests {
 
   @Test("A rejected request without a gateway body remains an HTTP failure")
   func aRejectedRequestWithoutAGatewayBodyRemainsAnHTTPFailure() async throws {
-    // Illustrative only, not recorded: the mapping depends only on the body not being the
-    // api.data.gov error shape.
-    let body = Data(#"{"status":400,"error":"Bad Request"}"#.utf8)
+    // Recorded from `/food/abc`; the mapping depends only on the body not being the api.data.gov
+    // error shape.
+    let body = try Fixture.foodInvalidID.data()
     let transport = MockTransport(results: [.success(Response(body: body, status: .badRequest))])
     let ids = try FoodIDs([167_782])
     do {
@@ -156,17 +188,5 @@ struct FoodDataCentralClientFoodsTests {
     FoodDataCentralClient(
       configuration: try FoodDataCentralConfiguration(apiKey: "private-test-key"),
       transport: transport)
-  }
-
-  // The `/foods` array wrapper is not yet recorded; each element is a recorded `/food/{fdcId}`
-  // body, which the specification gives the same shape as a `/foods` element.
-  private func recordedArray(_ fixtures: Fixture...) throws -> Data {
-    var body = Data("[".utf8)
-    for (index, fixture) in fixtures.enumerated() {
-      if index > 0 { body.append(contentsOf: Data(",".utf8)) }
-      body.append(try fixture.data())
-    }
-    body.append(contentsOf: Data("]".utf8))
-    return body
   }
 }

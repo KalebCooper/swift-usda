@@ -23,21 +23,24 @@ let request: FoodRequest<AbridgedFood> = .abridgedFood(2_346_404)
 
 To send an endpoint yourself, request ``Endpoint/path`` with ``Endpoint/method`` and, when
 present, ``Endpoint/body`` as `application/json`, put your data.gov API key in the `X-Api-Key`
-header, and decode the response body with an ordinary `JSONDecoder`. An endpoint never holds the key, and both of its initializers
-reject an `api_key` query parameter.
+header, and decode a successful response body with ``Endpoint/decode(_:)``. An endpoint never holds
+the key, and both of its initializers reject an `api_key` query parameter.
 
 ```swift
-let food = try JSONDecoder().decode(Food.self, from: body)
+let food = try endpoint.decode(body)
 ```
+
+``Endpoint/decode(_:)`` reads the body with an ordinary `JSONDecoder`, plus one rule for
+`/foods`: the service answers a lookup that matches no known identifier with `{}`, which the
+multiple-food endpoints decode as an empty array.
 
 ### Data types and formats
 
 FoodData Central returns a different record shape for each data type. A full-format lookup decodes
 as ``Food``, whose case follows the record's `dataType`: ``Food/branded(_:)``,
 ``Food/foundation(_:)``, ``Food/srLegacy(_:)``, or ``Food/survey(_:)``. A data type without a
-modeled shape decodes as ``Food/other(dataType:_:)`` with the whole record kept as ``JSONValue``;
-only the abridged Experimental list has been recorded, so a full-format Experimental record is
-untested. An abridged lookup decodes as ``AbridgedFood``, one shape for every data type.
+modeled shape decodes as ``Food/other(dataType:_:)`` with the whole record kept as ``JSONValue``,
+as a recorded full Experimental record does. An abridged lookup decodes as ``AbridgedFood``, one shape for every data type.
 
 ``FoodDataType`` is open, so a data type FoodData Central adds later decodes and keeps its exact
 spelling. Identifiers, units, dates, and missing values are kept as sent: dates stay strings, and
@@ -53,8 +56,9 @@ does not declare, such as a Branded food's `foodUpdateLog`, is not kept; only
 
 ``FoodID`` and ``NutrientNumber`` wrap the provider's identifiers. ``NutrientNumbers`` enforces the
 specification's limit of one to 25 distinct nutrients per lookup and throws
-``FoodDataCentralValidationError`` before any request is described. No response to a request with a
-`nutrients` filter has been recorded, so the limit and the filter's results are unverified.
+``FoodDataCentralValidationError`` before any request is described. The filter matches legacy
+nutrient numbers, such as 203 for protein, and keeps only those nutrients, as recorded. The 25-number
+limit and the result for a food with none of the requested nutrients have not been recorded.
 
 ```swift
 let macros = try NutrientNumbers([203, 204, 205])
@@ -77,9 +81,10 @@ print(endpoint.path)  // /foods?fdcIds=167782,2768188&format=full
 let request: FoodRequest<[AbridgedFood]> = .abridgedFoods(ids)
 ```
 
-The FoodData Central specification says it omits an identifier it does not know, so the result can
-be shorter than the list, or empty. It returns the foods in an order it does not document, so match results to
-identifiers by each food's `fdcID` rather than by position.
+The service omits an identifier it does not know, so the result can be shorter than the list. When it
+knows none of them it answers `{}`, which ``Endpoint/decode(_:)`` reads as an empty array. It returns
+the foods in an order it does not document, and a recorded response did not follow the request, so
+match results to identifiers by each food's `fdcID` rather than by position.
 
 ### Food lists
 
@@ -112,9 +117,10 @@ service also refuses pages deeper than an undocumented window; see
 something other than whitespace and may use FoodData Central's search operators, plus optional data
 types, a brand owner, a sort, a one-based page number, and a page size of 1 to 200. Every parameter
 travels in the JSON body, encoded with sorted keys so one query always produces the same bytes.
-The brand owner is sent exactly as given and applies only to Branded foods. The ``TradeChannel``
-filter and the ``FoodPublicationDate`` range come from the specification, which accepts them only
-in a body, and have not been verified against the service.
+The brand owner is sent exactly as given and applies only to Branded foods; the service echoes it but
+does not apply it strictly. The ``TradeChannel`` filter and the ``FoodPublicationDate`` range are
+accepted only in a body, and recorded searches show the service applies them. The service answers
+empty search terms with every food; rejecting them is this package's choice.
 
 ```swift
 let query = try FoodSearchQuery("cheddar cheese", dataTypes: [.branded], pageSize: 25)
@@ -125,11 +131,11 @@ print(endpoint.method, endpoint.path)  // post /foods/search
 A search page decodes as ``FoodSearchResult``, with the totals the service reports and a list of
 ``SearchResultFood`` values. ``FoodSearchQuery/next(after:)`` continues while the page's
 `currentPage` is below its `totalPages` and throws ``FoodPaginationError`` for a page that does
-not answer its query. No search response has been recorded: the shapes follow the FoodData Central
-specification (version 1.0.1), and where the service is understood to spell a field differently,
-such as a nutrient's `value` or a food's `publishedDate`, both spellings are accepted. Neither
-spelling is verified. The echoed ``FoodSearchCriteria`` is decoded leniently and never read for
-continuation.
+not answer its query, including a page past the last, which the service answers as page 1. Pages
+are numbered from 1. The shapes are checked against recorded responses, which spell a nutrient's
+amount `value` and a food's date `publishedDate`; the specification's `amount` and
+`publicationDate` are accepted too, the service's spelling first. The echoed
+``FoodSearchCriteria`` is decoded leniently and never read for continuation.
 
 ### Your own response types
 
@@ -157,6 +163,7 @@ The api.data.gov gateway answers credential and rate-limit failures with a body 
 
 - ``FoodRequest``
 - ``Endpoint``
+- ``Endpoint/decode(_:)``
 - ``EndpointMethod``
 
 ### Food lists

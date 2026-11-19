@@ -1,12 +1,12 @@
 extension Endpoint where Response == [Food] {
   /// Several foods in the full format, `GET /foods?fdcIds=...&format=full`.
   ///
-  /// Each food arrives in the shape its data type defines. The FoodData Central specification
-  /// says the service omits identifiers it does not know, so the array can be shorter than `ids`,
-  /// and empty when none are known. The array is in the order the service returns it; FoodData
-  /// Central does not document that order. Per the specification, `nutrients` restricts the
-  /// nutrients returned for each food. No `/foods` response has been recorded, so this endpoint
-  /// and the `nutrients` filter follow the specification and are unverified.
+  /// Each food arrives in the shape its data type defines. The service omits identifiers it does
+  /// not know, so the array can be shorter than `ids`. When it knows none of them it answers with
+  /// an empty JSON object rather than an array; ``decode(_:)`` reads that body as an empty array.
+  /// The array is in the order the service returns it, which FoodData Central does not document:
+  /// one recorded response followed the order of `ids` and another did not. `nutrients` keeps
+  /// only the nutrients whose legacy numbers it lists, in each food.
   ///
   /// ```swift
   /// Endpoint.foods(try FoodIDs([167_782, 2_768_188])).path
@@ -25,9 +25,9 @@ extension Endpoint where Response == [Food] {
 extension Endpoint where Response == [AbridgedFood] {
   /// Several foods in the abridged format, `GET /foods?fdcIds=...&format=abridged`.
   ///
-  /// The abridged format has one shape for every data type. Unknown identifiers are omitted and
-  /// the order is the service's, as for ``Endpoint/foods(_:nutrients:)``, and nutrients are
-  /// filtered the same way. Like that endpoint, it follows the specification and is unrecorded.
+  /// The abridged format has one shape for every data type. Unknown identifiers are omitted, an
+  /// empty JSON object decodes as no foods, the order is the service's, and nutrients are filtered,
+  /// all as for ``Endpoint/foods(_:nutrients:)``.
   ///
   /// ```swift
   /// Endpoint.abridgedFoods(try FoodIDs([167_782, 2_768_188])).path
@@ -49,6 +49,6 @@ extension Endpoint {
   ) -> Self {
     var items: [(name: String, value: String)] = [("fdcIds", ids.queryValue), ("format", format)]
     if let nutrients { items.append(("nutrients", nutrients.queryValue)) }
-    return builtIn(path: "/foods" + query(items))
+    return builtIn(emptyObjectAsEmptyArrayPath: "/foods" + query(items))
   }
 }

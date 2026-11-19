@@ -1,9 +1,8 @@
 /// A nutrient number, the identifier the `nutrients` filter on food lookups matches.
 ///
-/// The FoodData Central specification describes these as the legacy Standard Reference numbers,
-/// such as 203 for protein and 204 for total fat, not the newer nutrient IDs such as 1003. No
-/// response to a request with a `nutrients` filter has been recorded, so which of the two the
-/// service matches is unverified. Response bodies carry the legacy numbers as strings, in
+/// These are the legacy Standard Reference numbers, such as 203 for protein and 204 for total fat,
+/// not the newer nutrient IDs such as 1003: a recorded lookup filtered on `203,204,205` returned
+/// exactly the nutrients with those numbers (IDs 1003, 1004, and 1005). Response bodies carry the legacy numbers as strings, in
 /// ``AbridgedFoodNutrient/number`` and ``Nutrient/number``. The type checks no range; FoodData
 /// Central decides which numbers it knows.
 ///

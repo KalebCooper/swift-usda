@@ -46,9 +46,9 @@ public struct FoodDataCentralClient: Sendable {
   ///   - nutrients: The nutrients to return, or `nil` for all of them.
   /// - Returns: The food in the abridged shape shared by every data type.
   /// - Throws: ``FoodDataCentralError/gateway(_:response:)`` for gateway errors, or
-  ///   ``FoodDataCentralError/transport(_:)`` for an unknown identifier (`404`, a status
-  ///   FoodData Central documents and whose body has not been recorded), other HTTP, decoding,
-  ///   connection, and cancellation failures.
+  ///   ``FoodDataCentralError/transport(_:)`` for an unknown identifier (`404` with an empty
+  ///   body), a malformed identifier (`400`), other HTTP, decoding, connection, and cancellation
+  ///   failures.
   public func abridgedFood(
     _ id: FoodID, nutrients: NutrientNumbers? = nil
   ) async throws(FoodDataCentralError) -> AbridgedFood {
@@ -63,9 +63,9 @@ public struct FoodDataCentralClient: Sendable {
   ///   - nutrients: The nutrients to return, or `nil` for all of them.
   /// - Returns: The food, as the case of `Food` its data type selects.
   /// - Throws: ``FoodDataCentralError/gateway(_:response:)`` for gateway errors, or
-  ///   ``FoodDataCentralError/transport(_:)`` for an unknown identifier (`404`, a status
-  ///   FoodData Central documents and whose body has not been recorded), other HTTP, decoding,
-  ///   connection, and cancellation failures.
+  ///   ``FoodDataCentralError/transport(_:)`` for an unknown identifier (`404` with an empty
+  ///   body), a malformed identifier (`400`), other HTTP, decoding, connection, and cancellation
+  ///   failures.
   public func food(
     _ id: FoodID, nutrients: NutrientNumbers? = nil
   ) async throws(FoodDataCentralError) -> Food {
@@ -74,20 +74,45 @@ public struct FoodDataCentralClient: Sendable {
 
   /// Sends one endpoint and decodes its body as the endpoint's response type.
   ///
-  /// Cancellation is checked before sending. The API key is supplied only in a header.
+  /// Cancellation is checked before sending. The API key is supplied only in a header. The body
+  /// is decoded with the endpoint's `decode(_:)`, so a multiple-food lookup the service answers
+  /// with an empty JSON object returns an empty array.
   /// - Parameter endpoint: A validated relative FoodData Central endpoint.
   /// - Returns: The decoded body.
   /// - Throws: ``FoodDataCentralError/gateway(_:response:)`` for gateway errors, or
   ///   ``FoodDataCentralError/transport(_:)`` for HTTP, decoding, connection, and cancellation
-  ///   failures.
+  ///   failures. A body that does not decode is `TransportError.decode(underlying:)`.
   public func send<Value: Decodable & SendableMetatype>(
     _ endpoint: Endpoint<Value>
   ) async throws(FoodDataCentralError) -> Value {
     guard !Task.isCancelled else { throw .transport(.cancelled) }
+    let response: Response
     do throws(TransportError) {
-      return try await client.execute(request(for: endpoint)).value
+      response = try await client.execute(request(for: endpoint))
     } catch {
       throw FoodDataCentralError(error)
+    }
+    return try await Self.decoded(response.body, for: endpoint)
+  }
+
+  // Parsing a large body, such as twenty full foods, is felt wherever the caller runs, so it
+  // happens off the caller's executor.
+  @concurrent
+  private static func decoded<Value: Decodable & SendableMetatype>(
+    _ body: Data, for endpoint: Endpoint<Value>
+  ) async throws(FoodDataCentralError) -> sending Value {
+    try decodedInline(body, for: endpoint)
+  }
+
+  // Returned plain rather than `sending`, so the typed rethrow and the `sending` result do not
+  // share one body; every input is `Sendable`, which keeps the value disconnected for the caller.
+  private static func decodedInline<Value: Decodable & SendableMetatype>(
+    _ body: Data, for endpoint: Endpoint<Value>
+  ) throws(FoodDataCentralError) -> Value {
+    do throws(DecodingError) {
+      return try endpoint.decode(body)
+    } catch {
+      throw .transport(.decode(underlying: error))
     }
   }
 

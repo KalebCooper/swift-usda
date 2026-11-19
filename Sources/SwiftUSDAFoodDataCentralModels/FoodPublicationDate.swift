@@ -2,9 +2,8 @@
 ///
 /// The value is a validated Gregorian date with a four-digit year, and it involves no time zone or
 /// clock: it is the date as written. It is used for the search body's `startDate` and `endDate`
-/// filters, which the FoodData Central specification (version 1.0.1) describes as filtering on
-/// publication date. Those filters come from the specification and have not been verified against
-/// the service.
+/// filters, which filter on publication date. A recorded search sent with both echoed them and
+/// returned only foods published in that range.
 ///
 /// ```swift
 /// let date = try FoodPublicationDate(year: 2021, month: 1, day: 1)

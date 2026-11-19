@@ -1,9 +1,10 @@
 /// One to 20 distinct food identifiers, in the order given, for a multiple-food lookup.
 ///
 /// FoodData Central accepts at most 20 identifiers on one `/foods` request. The identifiers are
-/// sent in the order given; nothing is sorted, removed, or split across requests. The FoodData
-/// Central specification says the service omits identifiers it does not know, so a response can
-/// hold fewer foods than this list has identifiers.
+/// sent in the order given; nothing is sorted, removed, or split across requests. The service
+/// omits identifiers it does not know, so a response can hold fewer foods than this list has
+/// identifiers. The limit is the specification's: a recorded request with 21 unknown identifiers
+/// was answered like any other, so the service's own limit is not observable that way.
 ///
 /// ```swift
 /// let ids = try FoodIDs([167_782, 2_768_188])

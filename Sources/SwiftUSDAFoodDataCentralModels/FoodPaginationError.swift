@@ -28,13 +28,15 @@ public enum FoodPaginationError: Error, Hashable, Sendable {
   case pageNumberOverflow
   /// The service refused a page past its result window.
   ///
-  /// FoodData Central limits how deep results can page and does not document the limit. The
-  /// service answers `400` with the plain-text body "Bad Request: pageSize * pageNumber exceeded
-  /// upper search results limit." It was observed on the food list at a page number times page
-  /// size of 200,000; the exact limit is unknown. Neither `next(after:)` throws this case; an
-  /// executor reports it when the service refuses a page. The service sends no error code, so the
-  /// refusal is recognized by that observed body text, matched exactly; any other `400` is not this
-  /// case.
+  /// FoodData Central limits how deep results can page and does not document the limit. On the
+  /// food list the service answers `400` with the plain-text body "Bad Request: pageSize *
+  /// pageNumber exceeded upper search results limit." once the page number times the page size
+  /// exceeds 100,000; a page reaching exactly 100,000 is answered normally. No search refusal has
+  /// been observed: search pages at 10,002 were answered normally, and the search window is
+  /// unknown. Search sequences recognize the same body in case search refuses a page the same
+  /// way. Neither `next(after:)` throws this case; an executor reports it when the service
+  /// refuses a page. The service sends no error code, so the refusal is recognized by that body
+  /// text, matched exactly; any other `400` is not this case.
   case resultWindowExceeded
   /// The page reports a different page number from the query it answers.
   ///

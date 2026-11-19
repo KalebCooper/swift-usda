@@ -2,8 +2,9 @@
 ///
 /// The type is open so a channel the service adds can be sent without a new type. The constants are
 /// the eight values the FoodData Central specification (version 1.0.1) lists for the search body's
-/// `tradeChannel` filter. The filter comes from the specification and has not been verified
-/// against the service.
+/// `tradeChannel` filter. A recorded search filtered on ``grocery`` echoed the filter and returned
+/// only foods sold through grocery. Search results also carry values with no constant here, such
+/// as `CONVENIENCE` and `NO_TRADE_CHANNEL`.
 ///
 /// ```swift
 /// let query = try FoodSearchQuery("apple juice", tradeChannels: [.grocery, .foodService])

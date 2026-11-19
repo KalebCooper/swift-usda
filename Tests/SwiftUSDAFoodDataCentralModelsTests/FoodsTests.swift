@@ -58,32 +58,71 @@ struct FoodsTests {
       endpoint.path == "/foods?fdcIds=167782,2768188&format=abridged&nutrients=205,203,204")
   }
 
-  @Test("A mixed full response decodes each food by data type in the order received")
-  func aMixedFullResponseDecodesEachFoodByDataTypeInTheOrderReceived() throws {
-    let body = try recordedArray(
-      .foodSurveyFull, .foodBrandedFull, .foodSRLegacyFull, .foodFoundationFull)
-    let foods = try JSONDecoder().decode([Food].self, from: body)
+  @Test("A recorded full response decodes each food by data type, omitting the unknown one")
+  func aRecordedFullResponseDecodesEachFoodByDataTypeOmittingTheUnknownOne() throws {
+    let endpoint = Endpoint.foods(
+      try FoodIDs([2_617_100, 2_768_188, 167_782, 2_706_337, 999_999_999]))
+    let foods = try endpoint.decode(try Fixture.foodsMixedInvalid.data())
     #expect(
       foods.map(\.kindAndID) == [
-        "survey 2706337", "branded 2617100", "srLegacy 167782", "foundation 2768188",
+        "branded 2617100", "foundation 2768188", "srLegacy 167782", "survey 2706337",
       ])
   }
 
-  @Test("A response omitting an unknown identifier decodes only the known foods")
-  func aResponseOmittingAnUnknownIdentifierDecodesOnlyTheKnownFoods() throws {
-    // Requested 167782, 1, and 2768188; FoodData Central omits the unknown identifier 1.
-    let body = try recordedArray(.foodSRLegacyFull, .foodFoundationFull)
-    let foods = try JSONDecoder().decode([Food].self, from: body)
-    #expect(foods.map(\.kindAndID) == ["srLegacy 167782", "foundation 2768188"])
-  }
-
-  @Test("A mixed abridged response decodes in the order received")
-  func aMixedAbridgedResponseDecodesInTheOrderReceived() throws {
-    let body = try recordedArray(.foodFoundationAbridged, .foodBrandedAbridged)
-    let foods = try JSONDecoder().decode([AbridgedFood].self, from: body)
+  @Test("A recorded abridged response decodes in the order received, not the order requested")
+  func aRecordedAbridgedResponseDecodesInTheOrderReceivedNotTheOrderRequested() throws {
+    let endpoint = Endpoint.abridgedFoods(try FoodIDs([2_617_100, 2_768_188]))
+    let foods = try endpoint.decode(try Fixture.foodsAbridged.data())
     #expect(foods.map(\.fdcID) == [2_768_188, 2_617_100])
     #expect(foods.map(\.dataType) == [.foundation, .branded])
     #expect(foods.first?.ndbNumber == "15266")
+  }
+
+  @Test("A recorded nutrient filter keeps only the requested legacy numbers in each food")
+  func aRecordedNutrientFilterKeepsOnlyTheRequestedLegacyNumbersInEachFood() throws {
+    let foods = try JSONDecoder().decode([Food].self, from: try Fixture.foodsNutrients.data())
+    #expect(foods.map(\.kindAndID) == ["branded 2617100", "foundation 2768188"])
+    for food in foods {
+      #expect(Set(food.nutrientNumbers) == ["203", "204", "205"])
+      #expect(food.nutrientNumbers.count == 3)
+    }
+  }
+
+  @Test("A recorded lookup of only unknown identifiers decodes as no foods")
+  func aRecordedLookupOfOnlyUnknownIdentifiersDecodesAsNoFoods() throws {
+    let ids = try FoodIDs([999_999_998, 999_999_999])
+    let body = try Fixture.foodsAllInvalid.data()
+    #expect(body == Data("{}".utf8))
+    #expect(try Endpoint.foods(ids).decode(body).isEmpty)
+    #expect(try Endpoint.abridgedFoods(ids).decode(body).isEmpty)
+  }
+
+  @Test(
+    "An empty object with whitespace decodes as no foods", arguments: [" {}\n", "{ }", "\t{\r\n}"])
+  func anEmptyObjectWithWhitespaceDecodesAsNoFoods(_ body: String) throws {
+    let ids = try FoodIDs([1])
+    #expect(try Endpoint.foods(ids).decode(Data(body.utf8)).isEmpty)
+    #expect(try Endpoint.abridgedFoods(ids).decode(Data(body.utf8)).isEmpty)
+  }
+
+  @Test("A non-empty object still fails to decode as foods")
+  func aNonEmptyObjectStillFailsToDecodeAsFoods() throws {
+    let ids = try FoodIDs([1])
+    #expect(throws: DecodingError.self) {
+      try Endpoint.foods(ids).decode(Data(#"{"a":1}"#.utf8))
+    }
+    #expect(throws: DecodingError.self) {
+      try Endpoint.abridgedFoods(ids).decode(Data(#"{"a":1}"#.utf8))
+    }
+  }
+
+  @Test("An endpoint created from a path decodes an empty object as a failure")
+  func anEndpointCreatedFromAPathDecodesAnEmptyObjectAsAFailure() throws {
+    let endpoint = try #require(Endpoint<[Food]>(path: "/foods?fdcIds=1&format=full"))
+    #expect(endpoint != Endpoint.foods(try FoodIDs([1])))
+    #expect(throws: DecodingError.self) {
+      try endpoint.decode(Data("{}".utf8))
+    }
   }
 
   @Test("An empty response decodes to no foods", arguments: ["[]", " [ ] "])
@@ -94,9 +133,14 @@ struct FoodsTests {
 
   @Test("A contextual factory resolves to the full multiple-food endpoint")
   func aContextualFactoryResolvesToTheFullMultipleFoodEndpoint() throws {
-    let request: FoodRequest<[Food]> = .foods(try FoodIDs([167_782, 2_768_188]))
-    #expect(
-      request.resolution == .endpoint(Endpoint(path: "/foods?fdcIds=167782,2768188&format=full")!))
+    let ids = try FoodIDs([167_782, 2_768_188])
+    let request: FoodRequest<[Food]> = .foods(ids)
+    guard case .endpoint(let endpoint) = request.resolution else {
+      Issue.record("Expected a single-endpoint resolution, got \(request.resolution).")
+      return
+    }
+    #expect(endpoint == .foods(ids))
+    #expect(endpoint.path == "/foods?fdcIds=167782,2768188&format=full")
   }
 
   @Test("An unannotated stored multiple-food request infers its response type")
@@ -105,8 +149,11 @@ struct FoodsTests {
     let request = FoodRequest.abridgedFoods(ids)
     let typed: FoodRequest<[AbridgedFood]> = request
     #expect(typed == FoodRequest(endpoint: .abridgedFoods(ids)))
-    #expect(
-      typed.resolution == .endpoint(Endpoint(path: "/foods?fdcIds=167782&format=abridged")!))
+    guard case .endpoint(let endpoint) = typed.resolution else {
+      Issue.record("Expected a single-endpoint resolution, got \(typed.resolution).")
+      return
+    }
+    #expect(endpoint.path == "/foods?fdcIds=167782&format=abridged")
   }
 
   @Test("A consumer-defined factory composes the library's multiple-food endpoint")
@@ -130,21 +177,11 @@ struct FoodsTests {
       return
     }
     #expect(resolved.path == "/foods?fdcIds=167782,2768188&format=abridged")
-    let names = try JSONDecoder().decode(
-      [FoodName].self, from: try recordedArray(.foodSRLegacyFull, .foodFoundationFull))
-    #expect(names.map(\.description) == ["Abiyuch, raw", "Alaska Pollock, raw"])
-  }
-
-  // The `/foods` array wrapper is not yet recorded; each element is a recorded `/food/{fdcId}`
-  // body, which the specification gives the same shape as a `/foods` element.
-  private func recordedArray(_ fixtures: Fixture...) throws -> Data {
-    var body = Data("[".utf8)
-    for (index, fixture) in fixtures.enumerated() {
-      if index > 0 { body.append(contentsOf: Data(",".utf8)) }
-      body.append(try fixture.data())
-    }
-    body.append(contentsOf: Data("]".utf8))
-    return body
+    let names = try resolved.decode(try Fixture.foodsAbridged.data())
+    #expect(
+      names.map(\.description) == [
+        "Alaska Pollock, raw", " ALL NATURAL GLUTEN FREE CHICKEN NUGGETS",
+      ])
   }
 }
 
@@ -158,5 +195,18 @@ extension Food {
     case .srLegacy(let food): "srLegacy \(food.fdcID.rawValue)"
     case .survey(let food): "survey \(food.fdcID.rawValue)"
     }
+  }
+
+  // The legacy numbers of the food's nutrients, in the order received.
+  fileprivate var nutrientNumbers: [String] {
+    let nutrients: [FoodNutrient]? =
+      switch self {
+      case .branded(let food): food.foodNutrients
+      case .foundation(let food): food.foodNutrients
+      case .other: nil
+      case .srLegacy(let food): food.foodNutrients
+      case .survey(let food): food.foodNutrients
+      }
+    return (nutrients ?? []).compactMap { $0.nutrient?.number }
   }
 }

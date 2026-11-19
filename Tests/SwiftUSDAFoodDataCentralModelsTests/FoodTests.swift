@@ -154,6 +154,36 @@ struct FoodTests {
     #expect(fields["ndbNumber"] == .string("9427"))
   }
 
+  @Test("A recorded Experimental record is kept whole as an unmodeled data type")
+  func aRecordedExperimentalRecordIsKeptWholeAsAnUnmodeledDataType() throws {
+    let decoded = try food(.foodExperimentalFull)
+    guard case .other(let dataType, .object(let fields)) = decoded else {
+      Issue.record("Expected an unmodeled object, got \(decoded)")
+      return
+    }
+    #expect(dataType == .experimental)
+    #expect(
+      Set(fields.keys) == [
+        "abstract", "dataType", "description", "doiNumber", "doiUrl", "fdcId", "foodClass",
+        "publicationDate", "title",
+      ])
+    #expect(fields["fdcId"] == .number(2_715_733))
+    #expect(fields["publicationDate"] == .string("10/31/2024"))
+  }
+
+  @Test("A recorded nutrient filter on one food keeps only the requested legacy numbers")
+  func aRecordedNutrientFilterOnOneFoodKeepsOnlyTheRequestedLegacyNumbers() throws {
+    let decoded = try food(.foodFoundationNutrients)
+    guard case .foundation(let foundation) = decoded else {
+      Issue.record("Expected a Foundation food, got \(decoded)")
+      return
+    }
+    let nutrients = try #require(foundation.foodNutrients)
+    #expect(nutrients.compactMap { $0.nutrient?.number } == ["203", "204", "205"])
+    #expect(nutrients.compactMap { $0.nutrient?.id } == [1003, 1004, 1005])
+    #expect(nutrients.first?.amount == 17.33)
+  }
+
   @Test("A record of an unmodeled data type is kept whole")
   func aRecordOfAnUnmodeledDataTypeIsKeptWhole() throws {
     let decoded = try food(#"{"fdcId": 1, "dataType": "Experimental", "extra": [null, true]}"#)

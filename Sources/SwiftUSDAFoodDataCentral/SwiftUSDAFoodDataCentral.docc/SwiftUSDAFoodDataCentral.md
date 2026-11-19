@@ -29,9 +29,9 @@ case .survey(let food): print(food.description)
 }
 ```
 
-To fetch up to 20 foods in one request, validate the identifiers as `FoodIDs`. The FoodData Central
-specification says unknown identifiers are omitted, and the rest come back in an order it does not
-document:
+To fetch up to 20 foods in one request, validate the identifiers as `FoodIDs`. Unknown identifiers are
+omitted, the result is empty when none is known, and the rest come back in an order FoodData Central
+does not document:
 
 ```swift
 let foods = try await client.abridgedFoods(try FoodIDs([167_782, 2_768_188]))
@@ -50,8 +50,7 @@ for try await page in client.foodListPages(query) {
 ```
 
 To search, validate a `FoodSearchQuery` and read the results the same way. The search continues
-while the reported `currentPage` is below `totalPages`. No search response has been recorded, so the
-result shapes follow the FoodData Central specification and are unverified. See <doc:SearchingFoods>.
+while the reported `currentPage` is below `totalPages`. See <doc:SearchingFoods>.
 
 ```swift
 let search = try FoodSearchQuery("cheddar cheese", dataTypes: [.branded])

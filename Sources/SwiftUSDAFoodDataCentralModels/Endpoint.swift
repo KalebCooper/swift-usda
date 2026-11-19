@@ -11,8 +11,13 @@ import Foundation
 /// search, a JSON ``body``. It sends nothing itself: `SwiftUSDAFoodDataCentral` sends it, or a
 /// networking stack of your own does, by requesting ``path`` with ``method`` and ``body`` (as
 /// `application/json`) and your data.gov API key in the `X-Api-Key` header, then decoding the
-/// response body as `Response`.
+/// response body with ``decode(_:)``.
 /// The key never belongs in this value, and both initializers reject an `api_key` query parameter.
+///
+/// Equality and hashing cover the method, path, body, and how the response decodes. An endpoint
+/// from ``foods(_:nutrients:)`` or ``abridgedFoods(_:nutrients:)`` therefore differs from one
+/// created with ``init(path:)`` for the same path, because only the factories read an empty JSON
+/// object as no foods.
 ///
 /// ```swift
 /// let endpoint = Endpoint<Food>.food(2_346_404)
@@ -24,6 +29,11 @@ public struct Endpoint<Response>: Hashable, Sendable {
   /// Only ``foodSearch(_:)`` produces a body; every endpoint created from a path or a link sends
   /// none. The bytes are fixed when the endpoint is created and take part in equality and hashing.
   public let body: Data?
+
+  // Whether a body that is exactly an empty JSON object decodes as an empty array. Only the
+  // multiple-food factories set it, because `/foods` answers `{}` when it knows none of the
+  // identifiers.
+  let decodesEmptyObjectAsEmptyArray: Bool
 
   /// The HTTP method the request uses.
   ///
@@ -90,12 +100,16 @@ public struct Endpoint<Response>: Hashable, Sendable {
       !(components.queryItems ?? []).contains(where: { $0.name.lowercased() == "api_key" })
     else { return nil }
     self.body = nil
+    self.decodesEmptyObjectAsEmptyArray = false
     self.method = .get
     self.path = path
   }
 
-  private init(body: Data?, method: EndpointMethod, path: String) {
+  private init(
+    body: Data?, decodesEmptyObjectAsEmptyArray: Bool, method: EndpointMethod, path: String
+  ) {
     self.body = body
+    self.decodesEmptyObjectAsEmptyArray = decodesEmptyObjectAsEmptyArray
     self.method = method
     self.path = path
   }
@@ -111,7 +125,16 @@ public struct Endpoint<Response>: Hashable, Sendable {
 
   // A fixed route sent as POST with a JSON body. The route is validated like any other path.
   static func builtIn(path: String, postingJSON body: Data) -> Self {
-    Self(body: body, method: .post, path: builtIn(path: path).path)
+    Self(
+      body: body, decodesEmptyObjectAsEmptyArray: false, method: .post,
+      path: builtIn(path: path).path)
+  }
+
+  // A fixed GET route whose response is an array the service sends as `{}` when it is empty.
+  static func builtIn(emptyObjectAsEmptyArrayPath path: String) -> Self {
+    Self(
+      body: nil, decodesEmptyObjectAsEmptyArray: true, method: .get,
+      path: builtIn(path: path).path)
   }
 
   // Joins name-value pairs in the given order, percent-encoding every byte outside the unreserved
@@ -130,5 +153,49 @@ public struct Endpoint<Response>: Hashable, Sendable {
         "%" + (byte < 16 ? "0" : "") + String(byte, radix: 16, uppercase: true)
       }
     }.joined()
+  }
+}
+
+extension Endpoint where Response: Decodable {
+  /// Decodes a successful response body as this endpoint's response type.
+  ///
+  /// The body is read as JSON. For an endpoint from ``foods(_:nutrients:)`` or
+  /// ``abridgedFoods(_:nutrients:)``, a body that is exactly an empty JSON object, with any
+  /// whitespace around or inside the braces, decodes as an empty array: FoodData Central answers
+  /// `/foods` with `{}` rather than `[]` when it knows none of the identifiers. Any other object,
+  /// and any body for every other endpoint, decodes normally, so a non-empty object still fails.
+  /// Use this method when you send endpoints with your own networking stack, so your decoding
+  /// matches `SwiftUSDAFoodDataCentral`'s.
+  ///
+  /// ```swift
+  /// let endpoint = Endpoint.foods(try FoodIDs([999_999_998, 999_999_999]))
+  /// let (body, _) = try await session.data(for: urlRequest(for: endpoint))
+  /// let foods = try endpoint.decode(body)  // [] when the service sends {}
+  /// ```
+  ///
+  /// - Parameter body: The response body of a successful (`2xx`) response.
+  /// - Returns: The decoded response.
+  /// - Throws: `DecodingError` when the body is not JSON or does not have the response's shape. An
+  ///   error of another type thrown while decoding is reported as `DecodingError.dataCorrupted`
+  ///   with that error as its underlying error.
+  public func decode(_ body: Data) throws(DecodingError) -> Response {
+    // Every endpoint that sets the flag has an array response, so `[]` decodes as that response.
+    let source = decodesEmptyObjectAsEmptyArray && Self.isEmptyObject(body) ? Data("[]".utf8) : body
+    do {
+      return try JSONDecoder().decode(Response.self, from: source)
+    } catch let error as DecodingError {
+      throw error
+    } catch {
+      throw .dataCorrupted(
+        DecodingError.Context(
+          codingPath: [], debugDescription: "The response body could not be decoded.",
+          underlyingError: error))
+    }
+  }
+
+  // Whether the bytes are `{` and `}` with only JSON whitespace around and between them.
+  private static func isEmptyObject(_ body: Data) -> Bool {
+    let significant = body.filter { ![0x09, 0x0A, 0x0D, 0x20].contains($0) }
+    return significant.elementsEqual([0x7B, 0x7D])
   }
 }

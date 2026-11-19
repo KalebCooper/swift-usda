@@ -61,8 +61,9 @@ yourself.
 
 FoodData Central limits how deep a list can page and does not document the limit. It refuses a page
 with a `400` and the plain-text body "Bad Request: pageSize * pageNumber exceeded upper search
-results limit." The refusal was observed when the page number times the page size reached 200,000;
-the exact limit is unknown, and the service may change it.
+results limit." When recorded on Branded foods with a page size of 2, page 50,000 (100,000 foods
+deep) was answered and page 50,001 (100,002 deep) was refused, so the window observed is a page
+number times page size of at most 100,000. The service documents no limit and may change it.
 
 Inside ``FoodListPageSequence`` and ``FoodListItemSequence``, a `400` whose body is exactly that
 text arrives as ``FoodDataCentralError/pagination(_:)`` with
@@ -105,7 +106,7 @@ each request and again before each page or food is returned, including foods alr
 the current page, and arrives as ``FoodDataCentralError/transport(_:)`` with `cancelled`. Gateway
 refusals such as `OVER_RATE_LIMIT` arrive as ``FoodDataCentralError/gateway(_:response:)``. The
 client does not retry, wait, or track the rate limit, so a long traversal counts each page against
-the 1,000-request hourly allowance.
+the key's hourly allowance (documented as 1,000 requests).
 
 ## Topics
 

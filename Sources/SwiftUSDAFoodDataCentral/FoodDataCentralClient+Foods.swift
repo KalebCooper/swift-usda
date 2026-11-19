@@ -3,10 +3,10 @@ import SwiftUSDAFoodDataCentralModels
 extension FoodDataCentralClient {
   /// Looks up several foods in the abridged format.
   ///
-  /// Sends `FoodRequest.abridgedFoods(_:nutrients:)` through `value(for:)`. The FoodData
-  /// Central specification says the service omits identifiers it does not know, so the result can
-  /// be shorter than `ids` or empty. The result is in the order the service returns it, which it
-  /// does not document.
+  /// Sends `FoodRequest.abridgedFoods(_:nutrients:)` through `value(for:)`. The service omits
+  /// identifiers it does not know, so the result can be shorter than `ids`, and it is empty when
+  /// the service knows none of them (the service answers `{}`). The result is in the order the
+  /// service returns it, which it does not document and which need not match `ids`.
   /// - Parameters:
   ///   - ids: The foods' FoodData Central identifiers.
   ///   - nutrients: The nutrients to return, or `nil` for all of them.
@@ -22,10 +22,10 @@ extension FoodDataCentralClient {
 
   /// Looks up several foods in the full format, each in the shape its data type defines.
   ///
-  /// Sends `FoodRequest.foods(_:nutrients:)` through `value(for:)`. The FoodData Central
-  /// specification says the service omits identifiers it does not know, so the result can be
-  /// shorter than `ids` or empty. The result is in the order the service returns it, which it
-  /// does not document.
+  /// Sends `FoodRequest.foods(_:nutrients:)` through `value(for:)`. The service omits identifiers
+  /// it does not know, so the result can be shorter than `ids`, and it is empty when the service
+  /// knows none of them (the service answers `{}`). The result is in the order the service returns
+  /// it, which it does not document and which need not match `ids`.
   /// - Parameters:
   ///   - ids: The foods' FoodData Central identifiers.
   ///   - nutrients: The nutrients to return, or `nil` for all of them.

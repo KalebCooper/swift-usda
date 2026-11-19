@@ -48,10 +48,10 @@ public enum FoodDataCentralError: Error {
 
   /// A connection, cancellation, decoding, or HTTP status failure without a gateway error body.
   ///
-  /// An unknown food identifier (`404`) and a rejected request (`400`) arrive here as
-  /// `TransportError.httpStatus` with the original body. FoodData Central documents both statuses;
-  /// the bodies of those responses on `/food/{id}` have not been recorded. Redirects are returned here as HTTP
-  /// failures and are never followed with the API key.
+  /// An unknown food identifier (`404`, with an empty `text/plain` body) and a rejected request
+  /// (`400`, such as a malformed identifier, whose JSON body carries a string `error` rather than a
+  /// gateway error) arrive here as `TransportError.httpStatus` with the original body. Redirects
+  /// are returned here as HTTP failures and are never followed with the API key.
   case transport(TransportError)
 
   init(_ failure: TransportError) {
