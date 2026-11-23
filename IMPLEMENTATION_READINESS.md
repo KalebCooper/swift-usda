@@ -1,6 +1,6 @@
 # Implementation readiness
 
-`SwiftUSDAFoodDataCentralModels` and `SwiftUSDAFoodDataCentral` are implemented and the hosted workflows are enabled. No version is released and no remote exists. The items below record what is done and which gates remain.
+`SwiftUSDAFoodDataCentralModels` and `SwiftUSDAFoodDataCentral` are implemented, and the hosted workflows run on `main` at `github.com/KalebCooper/swift-usda`. No version is released. The items below record what is done and which gates remain.
 
 ## Activation record
 
@@ -12,10 +12,11 @@ Done in the first slice and the changes after it:
 - The source gate, run with no argument.
 - CI: the source job, lint widened to `Sources Tests Examples/SwiftUSDAFoodDataCentralDemo/SwiftUSDAFoodDataCentralDemo`, and the Linux, Android, and Apple lanes enabled, in that order, with the Release demo build on the Apple lane.
 - Documentation: the `docs.yml` build and Pages deploy enabled, with deployment limited to `main`.
+- Hosted runs: every lane passed on the first push to `main`: Linux (trait on, then default traits), Android emulator, iOS simulator with the Release demo build, lint, the source gate, the documentation build, and the Pages deploy to <https://kalebcooper.github.io/swift-usda/>.
+- Each `timeout-minutes` in `ci.yml` and `docs.yml` set from that job's first green run, rounded up to five minutes and tripled.
+- The Android action pin and `swift-version` match swifty-networking and the other family packages.
 
-The hosted lanes are configured and have not run. Nothing has been pushed.
-
-## Local gates before the first push
+## Local gates before each push
 
 - `bash Scripts/verify.sh` and `bash Scripts/verify.sh --self-test` exit 0.
 - `swift format lint --strict --recursive Sources Tests Examples/SwiftUSDAFoodDataCentralDemo/SwiftUSDAFoodDataCentralDemo` reports no findings.
@@ -34,10 +35,8 @@ Follow-up before the first release. The documentation marks each of these as unr
 
 ## Pending hosted gates
 
-- First hosted run of every lane on `main`: Linux (trait on, then default traits), Android emulator (which runs only in CI), iOS simulator with the Release demo build, lint, the source gate, and the documentation build.
-- Each provisional `timeout-minutes` in `ci.yml` and `docs.yml` set from that job's slowest green run, rounded up to five minutes and tripled.
-- Confirm the Android action pin and `swift-version` still match swifty-networking and the other family packages on the day of the first run.
-- GitHub Pages enabled for the repository and the first deploy from `main`; Swift Package Index registration.
-- Remote creation, push, tags, and releases, which require owner authorization.
+- Raise a `timeout-minutes` when a later green run on `main` is slower than the run it was set from.
+- Swift Package Index registration.
+- Tags and releases, which require owner authorization.
 
 `bash Scripts/verify.sh` is the source gate. A passing gate is not a build, test, or portability result.

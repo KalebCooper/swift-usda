@@ -28,6 +28,6 @@ Use Swift 6, the manifest's shared strict settings, alphabetical declarations wi
 and strict formatting. Models have no networking dependencies. Use Xcode MCP tools for Apple project
 operations and generated package schemes.
 
-Before publishing, complete the Android, documentation, demo, and hosted gates listed in
-[implementation readiness](IMPLEMENTATION_READINESS.md). CI timeouts are provisional until measured
-green runs exist. Use focused Conventional Commits; publishing requires owner authorization.
+Before pushing, run the local gates listed in
+[implementation readiness](IMPLEMENTATION_READINESS.md). Each CI timeout is the job's slowest green
+run on `main`, rounded up to five minutes and tripled. Use focused Conventional Commits; publishing requires owner authorization.

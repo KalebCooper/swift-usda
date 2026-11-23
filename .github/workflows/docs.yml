@@ -22,7 +22,7 @@ jobs:
     # The documentation build needs Xcode 27's docc and the iOS 27.0 simulator SDK, the same pins as the
     # Apple lane in ci.yml.
     runs-on: xcode-27
-    # Provisional until this package has green runs on main.
+    # The first green main run took 2m 3s: rounded to five minutes, then tripled.
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -58,7 +58,7 @@ jobs:
     # Only main publishes. A pull request or a workflow_dispatch on another ref builds and stops, so an
     # experiment cannot overwrite the live site.
     if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
-    # Provisional until this package has green runs on main.
+    # The first green main run took 9s: rounded to five minutes, then tripled.
     timeout-minutes: 15
     environment:
       name: github-pages
